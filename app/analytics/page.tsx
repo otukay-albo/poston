@@ -282,8 +282,8 @@ export default function AnalyticsPage() {
                   <Tooltip
                     contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #444" }}
                     labelStyle={{ color: "#fff" }}
-                    formatter={(v: number) => [
-                      isEngRate ? `${v.toFixed(2)}%` : v.toLocaleString("ja-JP"),
+                    formatter={(v) => [
+                      isEngRate ? `${Number(v).toFixed(2)}%` : Number(v).toLocaleString("ja-JP"),
                       METRICS[metricIdx].label,
                     ]}
                   />
