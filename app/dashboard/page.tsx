@@ -101,6 +101,9 @@ export default function DashboardPage() {
           <span className="text-white font-bold text-xl tracking-wide">Poston</span>
         </div>
         <div className="flex items-center gap-4">
+          <a href="/analytics" className="text-sm text-gray-300 hover:text-white transition border border-gray-700 hover:border-white px-4 py-1.5 rounded-full">
+            アナリティクス
+          </a>
           {user && (
             <div className="flex items-center gap-3">
               {user.avatar_url && (
