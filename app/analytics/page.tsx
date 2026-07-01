@@ -102,11 +102,11 @@ export default function AnalyticsPage() {
     to.setHours(23, 59, 59, 999);
     const mid = new Date((from.getTime() + to.getTime()) / 2);
 
-    const second = rows.filter((r) => {
+    const second = filtered.filter((r) => {
       const d = new Date(r.取得日時);
       return d >= mid && d <= to;
     });
-    const first = rows.filter((r) => {
+    const first = filtered.filter((r) => {
       const d = new Date(r.取得日時);
       return d >= from && d < mid;
     });
@@ -141,7 +141,7 @@ export default function AnalyticsPage() {
       engRate: avgEng2,
       engRateChange: change(avgEng2, avgEng1),
     };
-  }, [rows, dateFrom, dateTo]);
+  }, [filtered, dateFrom, dateTo]);
 
   // 日別グラフデータ
   const chartData = useMemo(() => {
