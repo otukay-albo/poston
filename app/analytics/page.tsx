@@ -74,9 +74,8 @@ export default function AnalyticsPage() {
 
   // 期間内の行に絞る
   const filtered = useMemo(() => {
-    const from = new Date(dateFrom);
-    const to = new Date(dateTo);
-    to.setHours(23, 59, 59, 999);
+    const from = new Date(dateFrom.replace(/\//g, "-") + "T00:00:00");
+    const to = new Date(dateTo.replace(/\//g, "-") + "T23:59:59");
     return rows.filter((r) => {
       const d = new Date(r.取得日時);
       return d >= from && d <= to;
@@ -97,9 +96,8 @@ export default function AnalyticsPage() {
 
   // サマリー（前半/後半比較）
   const summary = useMemo(() => {
-    const from = new Date(dateFrom);
-    const to = new Date(dateTo);
-    to.setHours(23, 59, 59, 999);
+    const from = new Date(dateFrom.replace(/\//g, "-") + "T00:00:00");
+    const to = new Date(dateTo.replace(/\//g, "-") + "T23:59:59");
     const mid = new Date((from.getTime() + to.getTime()) / 2);
 
     const second = filtered.filter((r) => {
@@ -146,9 +144,8 @@ export default function AnalyticsPage() {
   // 日別グラフデータ
   const chartData = useMemo(() => {
     const metric = METRICS[metricIdx].key as keyof Row;
-    const from = new Date(dateFrom);
-    const to = new Date(dateTo);
-    to.setHours(23, 59, 59, 999);
+    const from = new Date(dateFrom.replace(/\//g, "-") + "T00:00:00");
+    const to = new Date(dateTo.replace(/\//g, "-") + "T23:59:59");
 
     const dayMap = new Map<string, number[]>();
     rows.forEach((r) => {
