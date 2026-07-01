@@ -100,44 +100,32 @@ export default function AnalyticsPage() {
     const to = new Date(dateTo.replace(/\//g, "-") + "T23:59:59");
     const mid = new Date((from.getTime() + to.getTime()) / 2);
 
-    const second = filtered.filter((r) => {
-      const d = new Date(r.取得日時);
-      return d >= mid && d <= to;
-    });
-    const first = filtered.filter((r) => {
-      const d = new Date(r.取得日時);
-      return d >= from && d < mid;
-    });
+    const second = filtered.filter((r) => new Date(r.取得日時) >= mid);
+    const first = filtered.filter((r) => new Date(r.取得日時) < mid);
+
+    // データが後半にない場合は全体を使う
+    const main = second.length > 0 ? second : filtered;
+    const prev = first.length > 0 ? first : [];
 
     const sum = (arr: Row[], key: keyof Row) =>
       arr.reduce((s, r) => s + (Number(r[key]) || 0), 0);
     const avg = (arr: Row[], key: keyof Row) =>
       arr.length ? sum(arr, key) / arr.length : 0;
 
-    const totalViews2 = sum(second, "再生数");
-    const totalViews1 = sum(first, "再生数");
-    const totalLikes2 = sum(second, "いいね数");
-    const totalLikes1 = sum(first, "いいね数");
-    const totalComments2 = sum(second, "コメント数");
-    const totalComments1 = sum(first, "コメント数");
-    const totalShares2 = sum(second, "シェア数");
-    const totalShares1 = sum(first, "シェア数");
-    const avgEng2 = avg(second, "エンゲージメント率(%)");
-    const avgEng1 = avg(first, "エンゲージメント率(%)");
-
-    const change = (a: number, b: number) => b === 0 ? Infinity : ((a - b) / b) * 100;
+    const change = (a: number, b: number) =>
+      prev.length === 0 ? Infinity : b === 0 ? Infinity : ((a - b) / b) * 100;
 
     return {
-      views: totalViews2,
-      viewsChange: change(totalViews2, totalViews1),
-      likes: totalLikes2,
-      likesChange: change(totalLikes2, totalLikes1),
-      comments: totalComments2,
-      commentsChange: change(totalComments2, totalComments1),
-      shares: totalShares2,
-      sharesChange: change(totalShares2, totalShares1),
-      engRate: avgEng2,
-      engRateChange: change(avgEng2, avgEng1),
+      views: sum(main, "再生数"),
+      viewsChange: change(sum(main, "再生数"), sum(prev, "再生数")),
+      likes: sum(main, "いいね数"),
+      likesChange: change(sum(main, "いいね数"), sum(prev, "いいね数")),
+      comments: sum(main, "コメント数"),
+      commentsChange: change(sum(main, "コメント数"), sum(prev, "コメント数")),
+      shares: sum(main, "シェア数"),
+      sharesChange: change(sum(main, "シェア数"), sum(prev, "シェア数")),
+      engRate: avg(main, "エンゲージメント率(%)"),
+      engRateChange: change(avg(main, "エンゲージメント率(%)"), avg(prev, "エンゲージメント率(%)")),
     };
   }, [filtered, dateFrom, dateTo]);
 
