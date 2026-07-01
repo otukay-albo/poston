@@ -162,7 +162,7 @@ export default function AnalysisPage() {
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #444" }}
                   labelStyle={{ color: "#fff" }}
-                  formatter={(v: number) => [v.toLocaleString("ja-JP"), "平均再生数"]}
+                  formatter={(v) => [Number(v).toLocaleString("ja-JP"), "平均再生数"]}
                 />
                 <Bar dataKey="avgViews" fill="#ffffff" radius={[0, 4, 4, 0]} />
               </BarChart>
@@ -208,7 +208,7 @@ export default function AnalysisPage() {
                 <Tooltip
                   contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #444" }}
                   labelStyle={{ color: "#fff" }}
-                  formatter={(v: number) => [v.toLocaleString("ja-JP"), "平均再生数"]}
+                  formatter={(v) => [Number(v).toLocaleString("ja-JP"), "平均再生数"]}
                 />
                 <Bar dataKey="avgViews" fill="#ffffff" radius={[4, 4, 0, 0]} />
               </BarChart>
