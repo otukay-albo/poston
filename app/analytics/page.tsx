@@ -284,8 +284,10 @@ export default function AnalyticsPage() {
                       <th className="text-left px-6 py-3">タイトル</th>
                       <th className="text-right px-4 py-3">再生数</th>
                       <th className="text-right px-4 py-3">いいね</th>
+                      <th className="text-right px-4 py-3">いいね率</th>
                       <th className="text-right px-4 py-3">コメント</th>
                       <th className="text-right px-4 py-3">共有</th>
+                      <th className="text-right px-4 py-3">共有率</th>
                       <th className="text-right px-4 py-3">エンゲージ率</th>
                     </tr>
                   </thead>
@@ -304,8 +306,10 @@ export default function AnalyticsPage() {
                         </td>
                         <td className="text-right px-4 py-3">{v.再生数.toLocaleString("ja-JP")}</td>
                         <td className="text-right px-4 py-3">{v.いいね数.toLocaleString("ja-JP")}</td>
+                        <td className="text-right px-4 py-3 text-gray-400">{v.再生数 > 0 ? ((v.いいね数 / v.再生数) * 100).toFixed(2) : "0.00"}%</td>
                         <td className="text-right px-4 py-3">{v.コメント数.toLocaleString("ja-JP")}</td>
                         <td className="text-right px-4 py-3">{v.シェア数.toLocaleString("ja-JP")}</td>
+                        <td className="text-right px-4 py-3 text-gray-400">{v.再生数 > 0 ? ((v.シェア数 / v.再生数) * 100).toFixed(2) : "0.00"}%</td>
                         <td className="text-right px-4 py-3">{Number(v["エンゲージメント率(%)"]).toFixed(2)}%</td>
                       </tr>
                     ))}
