@@ -11,7 +11,7 @@ const METRICS = [
   { key: "再生数", label: "再生数", unit: "" },
   { key: "いいね数", label: "いいね", unit: "" },
   { key: "コメント数", label: "コメント", unit: "" },
-  { key: "シェア数", label: "シェア", unit: "" },
+  { key: "シェア数", label: "共有", unit: "" },
   { key: "エンゲージメント率(%)", label: "エンゲージ率", unit: "%" },
 ];
 
@@ -94,40 +94,20 @@ export default function AnalyticsPage() {
     return Array.from(map.values());
   }, [filtered]);
 
-  // サマリー（前半/後半比較）
+  // サマリー（latestByVideoベースで正確な集計）
   const summary = useMemo(() => {
-    const from = new Date(dateFrom.replace(/\//g, "-") + "T00:00:00");
-    const to = new Date(dateTo.replace(/\//g, "-") + "T23:59:59");
-    const mid = new Date((from.getTime() + to.getTime()) / 2);
+    const totalViews = latestByVideo.reduce((s, r) => s + r.再生数, 0);
+    const totalLikes = latestByVideo.reduce((s, r) => s + r.いいね数, 0);
+    const totalComments = latestByVideo.reduce((s, r) => s + r.コメント数, 0);
+    const totalShares = latestByVideo.reduce((s, r) => s + r.シェア数, 0);
+    const avgEng = latestByVideo.length
+      ? latestByVideo.reduce((s, r) => s + r["エンゲージメント率(%)"], 0) / latestByVideo.length
+      : 0;
+    const likeRate = totalViews > 0 ? (totalLikes / totalViews) * 100 : 0;
+    const shareRate = totalViews > 0 ? (totalShares / totalViews) * 100 : 0;
 
-    const second = filtered.filter((r) => new Date(r.取得日時) >= mid);
-    const first = filtered.filter((r) => new Date(r.取得日時) < mid);
-
-    // データが後半にない場合は全体を使う
-    const main = second.length > 0 ? second : filtered;
-    const prev = first.length > 0 ? first : [];
-
-    const sum = (arr: Row[], key: keyof Row) =>
-      arr.reduce((s, r) => s + (Number(r[key]) || 0), 0);
-    const avg = (arr: Row[], key: keyof Row) =>
-      arr.length ? sum(arr, key) / arr.length : 0;
-
-    const change = (a: number, b: number) =>
-      prev.length === 0 ? Infinity : b === 0 ? Infinity : ((a - b) / b) * 100;
-
-    return {
-      views: sum(main, "再生数"),
-      viewsChange: change(sum(main, "再生数"), sum(prev, "再生数")),
-      likes: sum(main, "いいね数"),
-      likesChange: change(sum(main, "いいね数"), sum(prev, "いいね数")),
-      comments: sum(main, "コメント数"),
-      commentsChange: change(sum(main, "コメント数"), sum(prev, "コメント数")),
-      shares: sum(main, "シェア数"),
-      sharesChange: change(sum(main, "シェア数"), sum(prev, "シェア数")),
-      engRate: avg(main, "エンゲージメント率(%)"),
-      engRateChange: change(avg(main, "エンゲージメント率(%)"), avg(prev, "エンゲージメント率(%)")),
-    };
-  }, [filtered, dateFrom, dateTo]);
+    return { totalViews, totalLikes, totalComments, totalShares, avgEng, likeRate, shareRate };
+  }, [latestByVideo]);
 
   // 日別グラフデータ
   const chartData = useMemo(() => {
@@ -223,21 +203,28 @@ export default function AnalyticsPage() {
           <>
             {/* サマリーカード */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              {[
-                { label: "合計再生数", value: summary.views.toLocaleString("ja-JP"), change: summary.viewsChange },
-                { label: "合計いいね", value: summary.likes.toLocaleString("ja-JP"), change: summary.likesChange },
-                { label: "合計コメント", value: summary.comments.toLocaleString("ja-JP"), change: summary.commentsChange },
-                { label: "合計シェア", value: summary.shares.toLocaleString("ja-JP"), change: summary.sharesChange },
-                { label: "平均エンゲージ率", value: summary.engRate.toFixed(2) + "%", change: summary.engRateChange },
-              ].map((card) => (
-                <div key={card.label} className="bg-gray-900 rounded-xl p-5">
-                  <p className="text-gray-400 text-xs mb-2">{card.label}</p>
-                  <p className="text-2xl font-bold mb-1">{card.value}</p>
-                  <p className={`text-xs ${pctColor(card.change)}`}>
-                    前半比 {pct(card.change)}
-                  </p>
-                </div>
-              ))}
+              <div className="bg-gray-900 rounded-xl p-5">
+                <p className="text-gray-400 text-xs mb-2">合計再生数</p>
+                <p className="text-2xl font-bold">{summary.totalViews.toLocaleString("ja-JP")}</p>
+              </div>
+              <div className="bg-gray-900 rounded-xl p-5">
+                <p className="text-gray-400 text-xs mb-2">合計いいね</p>
+                <p className="text-2xl font-bold">{summary.totalLikes.toLocaleString("ja-JP")}</p>
+                <p className="text-xs text-gray-400 mt-1">いいね率 {summary.likeRate.toFixed(2)}%</p>
+              </div>
+              <div className="bg-gray-900 rounded-xl p-5">
+                <p className="text-gray-400 text-xs mb-2">合計コメント</p>
+                <p className="text-2xl font-bold">{summary.totalComments.toLocaleString("ja-JP")}</p>
+              </div>
+              <div className="bg-gray-900 rounded-xl p-5">
+                <p className="text-gray-400 text-xs mb-2">合計共有</p>
+                <p className="text-2xl font-bold">{summary.totalShares.toLocaleString("ja-JP")}</p>
+                <p className="text-xs text-gray-400 mt-1">共有率 {summary.shareRate.toFixed(2)}%</p>
+              </div>
+              <div className="bg-gray-900 rounded-xl p-5">
+                <p className="text-gray-400 text-xs mb-2">平均エンゲージ率</p>
+                <p className="text-2xl font-bold">{summary.avgEng.toFixed(2)}%</p>
+              </div>
             </div>
 
             {/* グラフ */}
@@ -298,7 +285,7 @@ export default function AnalyticsPage() {
                       <th className="text-right px-4 py-3">再生数</th>
                       <th className="text-right px-4 py-3">いいね</th>
                       <th className="text-right px-4 py-3">コメント</th>
-                      <th className="text-right px-4 py-3">シェア</th>
+                      <th className="text-right px-4 py-3">共有</th>
                       <th className="text-right px-4 py-3">エンゲージ率</th>
                     </tr>
                   </thead>
