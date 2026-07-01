@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase";
 
 export async function GET(req: NextRequest) {
   const account = req.nextUrl.searchParams.get("account");
@@ -7,25 +8,28 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "account is required" }, { status: 400 });
   }
 
-  const base = process.env.GAS_API_BASE;
-  const key = process.env.GAS_API_KEY;
+  const { data, error } = await supabase
+    .from("video_stats")
+    .select("*")
+    .eq("account_name", account)
+    .order("fetched_at", { ascending: true });
 
-  if (!base || !key) {
-    return NextResponse.json({ error: "server configuration error" }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const url = `${base}?mode=data&account=${encodeURIComponent(account)}&key=${encodeURIComponent(key)}`;
+  const rows = (data || []).map((r) => ({
+    取得日時: r.fetched_at,
+    動画ID: r.video_id,
+    タイトル: r.title,
+    再生数: r.view_count,
+    いいね数: r.like_count,
+    コメント数: r.comment_count,
+    シェア数: r.share_count,
+    "エンゲージメント率(%)": r.engagement_rate,
+    投稿日時: r.posted_at,
+    "動画時間(秒)": r.duration_seconds,
+  }));
 
-  try {
-    const res = await fetch(url, { redirect: "follow" });
-    const data = await res.json();
-
-    if (data.error) {
-      return NextResponse.json({ error: data.error }, { status: 400 });
-    }
-
-    return NextResponse.json(data);
-  } catch (e) {
-    return NextResponse.json({ error: "fetch failed" }, { status: 500 });
-  }
+  return NextResponse.json({ rows });
 }
