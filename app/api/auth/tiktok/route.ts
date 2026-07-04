@@ -5,7 +5,7 @@ export async function POST(req: NextRequest) {
 
   const clientKey = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY!;
   const clientSecret = process.env.TIKTOK_CLIENT_SECRET!;
-  const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI!;
+  const redirectUri = "https://poston-seven.vercel.app/callback";
 
   const params = new URLSearchParams({
     client_key: clientKey,

@@ -30,7 +30,7 @@ export default function Home() {
     sessionStorage.setItem("code_verifier", codeVerifier);
 
     const clientKey = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY;
-    const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI;
+    const redirectUri = "https://poston-seven.vercel.app/callback";
     const scope = "user.info.basic,user.info.stats,video.list";
 
     const authUrl =
