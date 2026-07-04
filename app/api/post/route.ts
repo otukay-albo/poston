@@ -1,23 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// 動画本体はブラウザから直接TikTokへPUTするため、このAPIは「初期化」だけを担当する。
+// （Vercelのリクエストボディ上限 4.5MB を回避するため）
 export async function POST(req: NextRequest) {
-  const formData = await req.formData();
-  const access_token = formData.get("access_token") as string;
-  const video = formData.get("video") as File;
-  const title = (formData.get("title") as string) || "";
-  const privacy_level = (formData.get("privacy_level") as string) || "PUBLIC_TO_EVERYONE";
-  const disable_duet = formData.get("disable_duet") === "true";
-  const disable_stitch = formData.get("disable_stitch") === "true";
-  const disable_comment = formData.get("disable_comment") === "true";
+  const {
+    access_token,
+    title,
+    privacy_level,
+    disable_duet,
+    disable_stitch,
+    disable_comment,
+    video_size,
+  } = await req.json();
 
   if (!access_token) {
-    return NextResponse.json({ error: "access_token is required" }, { status: 400 });
+    return NextResponse.json({ error: "ログインが必要です" }, { status: 400 });
   }
-  if (!video) {
-    return NextResponse.json({ error: "video is required" }, { status: 400 });
+  if (!video_size) {
+    return NextResponse.json({ error: "動画サイズが取得できませんでした" }, { status: 400 });
   }
 
-  // Step 1: Initialize upload
   const initRes = await fetch("https://open.tiktokapis.com/v2/post/publish/video/init/", {
     method: "POST",
     headers: {
@@ -26,44 +28,33 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       post_info: {
-        title,
-        privacy_level,
-        disable_duet,
-        disable_stitch,
-        disable_comment,
+        title: title || "",
+        privacy_level: privacy_level || "SELF_ONLY",
+        disable_duet: !!disable_duet,
+        disable_stitch: !!disable_stitch,
+        disable_comment: !!disable_comment,
       },
       source_info: {
         source: "FILE_UPLOAD",
-        video_size: video.size,
-        chunk_size: video.size,
+        video_size,
+        chunk_size: video_size,
         total_chunk_count: 1,
       },
     }),
   });
 
   const initData = await initRes.json();
-  if (initData.error?.code !== "ok") {
-    const msg = initData.error?.message || "Init failed";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  console.log("TikTok init response:", JSON.stringify(initData));
+
+  if (initData.error && initData.error.code !== "ok") {
+    return NextResponse.json(
+      { error: initData.error.message || "TikTokの初期化に失敗しました", detail: initData.error },
+      { status: 400 }
+    );
   }
 
-  const { publish_id, upload_url } = initData.data;
-
-  // Step 2: Upload video
-  const videoBuffer = await video.arrayBuffer();
-  const uploadRes = await fetch(upload_url, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "video/mp4",
-      "Content-Range": `bytes 0-${video.size - 1}/${video.size}`,
-      "Content-Length": String(video.size),
-    },
-    body: videoBuffer,
+  return NextResponse.json({
+    upload_url: initData.data.upload_url,
+    publish_id: initData.data.publish_id,
   });
-
-  if (!uploadRes.ok) {
-    return NextResponse.json({ error: `Upload failed: ${uploadRes.status}` }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true, publish_id });
 }

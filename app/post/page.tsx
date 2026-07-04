@@ -42,8 +42,19 @@ export default function 投稿ページ() {
   const ファイル選択 = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (動画URL) URL.revokeObjectURL(動画URL);
     set動画ファイル(file);
     set動画URL(URL.createObjectURL(file));
+    setエラー("");
+  };
+
+  const 動画削除 = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (動画URL) URL.revokeObjectURL(動画URL);
+    set動画ファイル(null);
+    set動画URL(null);
+    setエラー("");
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   const 投稿実行 = async () => {
@@ -59,37 +70,61 @@ export default function 投稿ページ() {
     }
 
     const { access_token } = JSON.parse(tokenData);
-    const form = new FormData();
-    form.append("video", 動画ファイル);
-    form.append("access_token", access_token);
-    form.append("title", タイトル);
-    form.append("privacy_level", 公開設定);
-    form.append("disable_duet", String(デュエット無効));
-    form.append("disable_stitch", String(スティッチ無効));
-    form.append("disable_comment", String(コメント無効));
 
     try {
-      const res = await fetch("/api/post", { method: "POST", body: form });
-      const data = await res.json();
-      if (data.error) {
-        setエラー(data.error);
-      } else {
-        setステップ("完了");
+      // ステップ1: TikTokにアップロード先URLを発行してもらう
+      const initRes = await fetch("/api/post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          access_token,
+          title: タイトル,
+          privacy_level: 公開設定,
+          disable_duet: デュエット無効,
+          disable_stitch: スティッチ無効,
+          disable_comment: コメント無効,
+          video_size: 動画ファイル.size,
+        }),
+      });
+      const initData = await initRes.json();
+      if (!initRes.ok || initData.error) {
+        setエラー(initData.error || `投稿の初期化に失敗しました (${initRes.status})`);
+        set投稿中(false);
+        return;
       }
-    } catch {
-      setエラー("投稿に失敗しました。もう一度お試しください。");
+
+      // ステップ2: 動画をTikTokへ直接アップロード（Vercelを経由しない）
+      const putRes = await fetch(initData.upload_url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "video/mp4",
+          "Content-Range": `bytes 0-${動画ファイル.size - 1}/${動画ファイル.size}`,
+        },
+        body: 動画ファイル,
+      });
+      if (!putRes.ok) {
+        setエラー(`動画のアップロードに失敗しました (${putRes.status})`);
+        set投稿中(false);
+        return;
+      }
+
+      setステップ("完了");
+    } catch (e) {
+      setエラー("投稿に失敗しました: " + (e instanceof Error ? e.message : String(e)));
     } finally {
       set投稿中(false);
     }
   };
 
   const リセット = () => {
+    if (動画URL) URL.revokeObjectURL(動画URL);
     setステップ("編集");
     set動画ファイル(null);
     set動画URL(null);
     setタイトル("");
     set公開設定("PUBLIC_TO_EVERYONE");
     setエラー("");
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   return (
@@ -117,18 +152,38 @@ export default function 投稿ページ() {
 
         {ステップ === "編集" && (
           <div className="space-y-6">
-            <div
-              onClick={() => fileRef.current?.click()}
-              className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-10 text-center cursor-pointer hover:border-gray-500 dark:hover:border-gray-400 transition"
-            >
+            <div className="relative border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-10 text-center transition hover:border-gray-500 dark:hover:border-gray-400">
               {動画URL ? (
-                <video src={動画URL} className="max-h-52 mx-auto rounded-lg" controls />
-              ) : (
                 <>
+                  <video src={動画URL} className="max-h-52 mx-auto rounded-lg" controls />
+                  <button
+                    onClick={動画削除}
+                    aria-label="動画を削除"
+                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black transition"
+                  >
+                    ✕
+                  </button>
+                  <div className="mt-4 flex items-center justify-center gap-4">
+                    <button
+                      onClick={() => fileRef.current?.click()}
+                      className="text-sm text-gray-500 dark:text-gray-400 underline hover:text-black dark:hover:text-white"
+                    >
+                      別の動画に変更
+                    </button>
+                    <button
+                      onClick={動画削除}
+                      className="text-sm text-red-500 underline hover:text-red-600"
+                    >
+                      削除
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div onClick={() => fileRef.current?.click()} className="cursor-pointer">
                   <p className="text-3xl mb-3">🎬</p>
                   <p className="font-bold mb-1">動画を選択してください</p>
                   <p className="text-gray-500 dark:text-gray-400 text-sm">MP4形式・最大500MB</p>
-                </>
+                </div>
               )}
               <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={ファイル選択} />
             </div>
