@@ -3,11 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import Header from "../components/Header";
 
-const 公開設定一覧 = [
-  { value: "PUBLIC_TO_EVERYONE", label: "全員に公開" },
-  { value: "MUTUAL_FOLLOW_FRIENDS", label: "相互フォロワーのみ" },
-  { value: "SELF_ONLY", label: "非公開" },
-];
+const 公開設定ラベル: Record<string, string> = {
+  PUBLIC_TO_EVERYONE: "全員に公開",
+  MUTUAL_FOLLOW_FRIENDS: "相互フォロワーのみ",
+  FOLLOWER_OF_CREATOR: "フォロワーのみ",
+  SELF_ONLY: "自分のみ（非公開）",
+};
 
 type ステップ = "編集" | "確認" | "完了";
 
@@ -16,7 +17,7 @@ export default function 投稿ページ() {
   const [動画ファイル, set動画ファイル] = useState<File | null>(null);
   const [動画URL, set動画URL] = useState<string | null>(null);
   const [タイトル, setタイトル] = useState("");
-  const [公開設定, set公開設定] = useState("PUBLIC_TO_EVERYONE");
+  const [公開設定, set公開設定] = useState("");
   const [デュエット無効, setデュエット無効] = useState(false);
   const [スティッチ無効, setスティッチ無効] = useState(false);
   const [コメント無効, setコメント無効] = useState(false);
@@ -24,20 +25,50 @@ export default function 投稿ページ() {
   const [エラー, setエラー] = useState("");
   const [アカウント名, setアカウント名] = useState("");
   const [アバター, setアバター] = useState("");
+  const [公開設定候補, set公開設定候補] = useState<string[]>([]);
+  const [コメント不可, setコメント不可] = useState(false);
+  const [デュエット不可, setデュエット不可] = useState(false);
+  const [スティッチ不可, setスティッチ不可] = useState(false);
+  const [再ログイン必要, set再ログイン必要] = useState(false);
+  const [読込中, set読込中] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const tokenData = localStorage.getItem("tiktok_token");
-    if (!tokenData) return;
-    const { access_token, open_id } = JSON.parse(tokenData);
-    fetch(`/api/user?access_token=${access_token}&open_id=${open_id}`)
+    if (!tokenData) {
+      set読込中(false);
+      return;
+    }
+    const { access_token } = JSON.parse(tokenData);
+    fetch("/api/creator-info", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ access_token }),
+    })
       .then((r) => r.json())
       .then((d) => {
-        if (d.display_name) setアカウント名(d.display_name);
-        if (d.avatar_url) setアバター(d.avatar_url);
+        if (d.error) {
+          // 投稿権限（video.publish）が無い旧トークン → 再ログインが必要
+          set再ログイン必要(true);
+          return;
+        }
+        if (d.creator_nickname) setアカウント名(d.creator_nickname);
+        if (d.creator_avatar_url) setアバター(d.creator_avatar_url);
+        const options: string[] = d.privacy_level_options || [];
+        set公開設定候補(options);
+        if (options.length > 0) set公開設定(options[0]);
+        setコメント不可(!!d.comment_disabled);
+        setデュエット不可(!!d.duet_disabled);
+        setスティッチ不可(!!d.stitch_disabled);
       })
-      .catch(() => {});
+      .catch(() => set再ログイン必要(true))
+      .finally(() => set読込中(false));
   }, []);
+
+  const 再ログイン = () => {
+    localStorage.removeItem("tiktok_token");
+    window.location.href = "/";
+  };
 
   const ファイル選択 = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -80,9 +111,9 @@ export default function 投稿ページ() {
           access_token,
           title: タイトル,
           privacy_level: 公開設定,
-          disable_duet: デュエット無効,
-          disable_stitch: スティッチ無効,
-          disable_comment: コメント無効,
+          disable_duet: デュエット無効 || デュエット不可,
+          disable_stitch: スティッチ無効 || スティッチ不可,
+          disable_comment: コメント無効 || コメント不可,
           video_size: 動画ファイル.size,
         }),
       });
@@ -122,7 +153,7 @@ export default function 投稿ページ() {
     set動画ファイル(null);
     set動画URL(null);
     setタイトル("");
-    set公開設定("PUBLIC_TO_EVERYONE");
+    set公開設定(公開設定候補[0] || "");
     setエラー("");
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -150,7 +181,30 @@ export default function 投稿ページ() {
           )}
         </div>
 
-        {ステップ === "編集" && (
+        {読込中 && (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-4 border-black dark:border-white border-t-transparent rounded-full animate-spin"></div>
+          </div>
+        )}
+
+        {!読込中 && 再ログイン必要 && (
+          <div className="bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-300 dark:border-yellow-800 rounded-xl p-8 text-center space-y-4">
+            <p className="text-4xl">🔑</p>
+            <p className="font-bold text-lg">投稿するには再ログインが必要です</p>
+            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+              現在のログインには投稿権限（video.publish）が含まれていません。<br />
+              一度ログアウトし、投稿権限を許可した状態でログインし直してください。
+            </p>
+            <button
+              onClick={再ログイン}
+              className="bg-black dark:bg-white text-white dark:text-black rounded-full px-8 py-3 text-sm font-bold hover:opacity-80 transition"
+            >
+              再ログインする
+            </button>
+          </div>
+        )}
+
+        {!読込中 && !再ログイン必要 && ステップ === "編集" && (
           <div className="space-y-6">
             <div className="relative border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-10 text-center transition hover:border-gray-500 dark:hover:border-gray-400">
               {動画URL ? (
@@ -208,8 +262,8 @@ export default function 投稿ページ() {
                 onChange={(e) => set公開設定(e.target.value)}
                 className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-sm"
               >
-                {公開設定一覧.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                {公開設定候補.map((v) => (
+                  <option key={v} value={v}>{公開設定ラベル[v] || v}</option>
                 ))}
               </select>
             </div>
@@ -218,18 +272,22 @@ export default function 投稿ページ() {
               <label className="block text-sm text-gray-500 dark:text-gray-400 mb-3">インタラクション設定</label>
               <div className="space-y-3">
                 {[
-                  { label: "デュエットを無効にする", value: デュエット無効, set: setデュエット無効 },
-                  { label: "スティッチを無効にする", value: スティッチ無効, set: setスティッチ無効 },
-                  { label: "コメントを無効にする", value: コメント無効, set: setコメント無効 },
+                  { label: "デュエットを無効にする", value: デュエット無効, set: setデュエット無効, locked: デュエット不可 },
+                  { label: "スティッチを無効にする", value: スティッチ無効, set: setスティッチ無効, locked: スティッチ不可 },
+                  { label: "コメントを無効にする", value: コメント無効, set: setコメント無効, locked: コメント不可 },
                 ].map((item) => (
-                  <label key={item.label} className="flex items-center gap-3 cursor-pointer">
+                  <label key={item.label} className={`flex items-center gap-3 ${item.locked ? "opacity-60" : "cursor-pointer"}`}>
                     <input
                       type="checkbox"
-                      checked={item.value}
+                      checked={item.value || item.locked}
+                      disabled={item.locked}
                       onChange={(e) => item.set(e.target.checked)}
                       className="w-4 h-4"
                     />
-                    <span className="text-sm text-gray-700 dark:text-gray-300">{item.label}</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300">
+                      {item.label}
+                      {item.locked && <span className="text-xs text-gray-400 ml-1">（アカウント設定で無効）</span>}
+                    </span>
                   </label>
                 ))}
               </div>
@@ -258,7 +316,7 @@ export default function 投稿ページ() {
           </div>
         )}
 
-        {ステップ === "確認" && (
+        {!再ログイン必要 && ステップ === "確認" && (
           <div className="space-y-6">
             <h2 className="font-bold text-lg">投稿内容の確認</h2>
 
@@ -269,7 +327,7 @@ export default function 投稿ページ() {
             <div className="bg-gray-50 dark:bg-gray-900 rounded-xl divide-y divide-gray-200 dark:divide-gray-800 text-sm">
               {[
                 { label: "タイトル", value: タイトル || "（未入力）" },
-                { label: "公開設定", value: 公開設定一覧.find((o) => o.value === 公開設定)?.label ?? "" },
+                { label: "公開設定", value: 公開設定ラベル[公開設定] || 公開設定 },
                 { label: "デュエット", value: デュエット無効 ? "無効" : "有効" },
                 { label: "スティッチ", value: スティッチ無効 ? "無効" : "有効" },
                 { label: "コメント", value: コメント無効 ? "無効" : "有効" },

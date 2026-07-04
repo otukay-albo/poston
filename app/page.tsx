@@ -31,7 +31,7 @@ export default function Home() {
 
     const clientKey = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY;
     const redirectUri = "https://poston-app-five.vercel.app/callback";
-    const scope = "user.info.basic,user.info.stats,video.list";
+    const scope = "user.info.basic,user.info.stats,video.list,video.publish";
 
     const authUrl =
       `https://www.tiktok.com/v2/auth/authorize/?` +
