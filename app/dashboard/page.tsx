@@ -104,6 +104,12 @@ export default function DashboardPage() {
           <a href="/analytics" className="text-sm text-gray-300 hover:text-white transition border border-gray-700 hover:border-white px-4 py-1.5 rounded-full">
             アナリティクス
           </a>
+          <a href="/analysis" className="text-sm text-gray-300 hover:text-white transition border border-gray-700 hover:border-white px-4 py-1.5 rounded-full">
+            傾向分析
+          </a>
+          <a href="/post" className="text-sm bg-white text-black font-bold hover:bg-gray-200 transition px-4 py-1.5 rounded-full">
+            投稿
+          </a>
           {user && (
             <div className="flex items-center gap-3">
               {user.avatar_url && (

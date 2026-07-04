@@ -108,6 +108,7 @@ export default function AnalysisPage() {
           <a href="/dashboard" className="text-gray-400 hover:text-white transition">ダッシュボード</a>
           <a href="/analytics" className="text-gray-400 hover:text-white transition">アナリティクス</a>
           <a href="/analysis" className="text-white font-bold border-b border-white pb-0.5">傾向分析</a>
+          <a href="/post" className="text-gray-400 hover:text-white transition">投稿</a>
         </nav>
       </header>
 
