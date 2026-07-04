@@ -59,16 +59,9 @@ export default function 投稿ページ() {
         }
         if (d.creator_nickname) setアカウント名(d.creator_nickname);
         if (d.creator_avatar_url) setアバター(d.creator_avatar_url);
-        const options: string[] = d.privacy_level_options || [];
-        if (審査済み) {
-          set公開設定候補(options);
-          // 最もプライベートな SELF_ONLY を初期値に（あれば）
-          set公開設定(options.includes("SELF_ONLY") ? "SELF_ONLY" : options[0] || "");
-        } else {
-          // 審査前は非公開のみ許可される
-          set公開設定候補(["SELF_ONLY"]);
-          set公開設定("SELF_ONLY");
-        }
+        // TikTok UXガイドライン: creator_info の privacy_level_options をそのまま表示し、
+        // デフォルト値は設定しない（ユーザーが必ず手動で選択する）
+        set公開設定候補(d.privacy_level_options || []);
         setコメント不可(!!d.comment_disabled);
         setデュエット不可(!!d.duet_disabled);
         setスティッチ不可(!!d.stitch_disabled);
@@ -166,7 +159,7 @@ export default function 投稿ページ() {
     set動画ファイル(null);
     set動画URL(null);
     setタイトル("");
-    set公開設定(公開設定候補[0] || "");
+    set公開設定("");
     setエラー("");
     if (fileRef.current) fileRef.current.value = "";
   };
@@ -275,13 +268,14 @@ export default function 投稿ページ() {
                 onChange={(e) => set公開設定(e.target.value)}
                 className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-sm"
               >
+                <option value="" disabled>公開範囲を選択してください</option>
                 {公開設定候補.map((v) => (
                   <option key={v} value={v}>{公開設定ラベル[v] || v}</option>
                 ))}
               </select>
               {!審査済み && (
                 <p className="text-xs text-gray-400 dark:text-gray-600 mt-2 leading-relaxed">
-                  ※ TikTok審査前のため、①投稿アカウントを「非公開アカウント」に設定し、②公開範囲「自分のみ」でのみ投稿できます。公開投稿には審査（App review）の通過が必要です。
+                  ※ TikTok審査前のため、①投稿アカウントを「非公開アカウント」に設定し、②公開範囲「自分のみ」を選択した場合のみ投稿できます。公開投稿には審査（App review）の通過が必要です。
                 </p>
               )}
             </div>
@@ -317,7 +311,7 @@ export default function 投稿ページ() {
               </a>
               <button
                 onClick={() => setステップ("確認")}
-                disabled={!動画ファイル}
+                disabled={!動画ファイル || !公開設定}
                 className="flex-1 bg-black dark:bg-white text-white dark:text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:opacity-80 transition"
               >
                 内容を確認する
@@ -362,6 +356,12 @@ export default function 投稿ページ() {
                 {エラー}
               </div>
             )}
+
+            <p className="text-xs text-gray-500 dark:text-gray-500 leading-relaxed">
+              投稿することで、あなたはTikTokの
+              <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noreferrer" className="underline hover:text-black dark:hover:text-white">音楽利用の確認事項（Music Usage Confirmation）</a>
+              に同意したものとみなされます。
+            </p>
 
             <div className="flex gap-3">
               <button
