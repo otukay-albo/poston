@@ -2,160 +2,162 @@
 
 import { useState, useRef } from "react";
 
-const PRIVACY_OPTIONS = [
+const 公開設定一覧 = [
   { value: "PUBLIC_TO_EVERYONE", label: "全員に公開" },
   { value: "MUTUAL_FOLLOW_FRIENDS", label: "相互フォロワーのみ" },
   { value: "SELF_ONLY", label: "非公開" },
 ];
 
-type Step = "edit" | "preview" | "done";
+type ステップ = "編集" | "確認" | "完了";
 
-export default function PostPage() {
-  const [step, setStep] = useState<Step>("edit");
-  const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [privacy, setPrivacy] = useState("PUBLIC_TO_EVERYONE");
-  const [disableDuet, setDisableDuet] = useState(false);
-  const [disableStitch, setDisableStitch] = useState(false);
-  const [disableComment, setDisableComment] = useState(false);
-  const [posting, setPosting] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+export default function 投稿ページ() {
+  const [ステップ, setステップ] = useState<ステップ>("編集");
+  const [動画ファイル, set動画ファイル] = useState<File | null>(null);
+  const [動画URL, set動画URL] = useState<string | null>(null);
+  const [タイトル, setタイトル] = useState("");
+  const [公開設定, set公開設定] = useState("PUBLIC_TO_EVERYONE");
+  const [デュエット無効, setデュエット無効] = useState(false);
+  const [スティッチ無効, setスティッチ無効] = useState(false);
+  const [コメント無効, setコメント無効] = useState(false);
+  const [投稿中, set投稿中] = useState(false);
+  const [エラー, setエラー] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const ファイル選択 = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setVideoFile(file);
-    setVideoUrl(URL.createObjectURL(file));
+    set動画ファイル(file);
+    set動画URL(URL.createObjectURL(file));
   };
 
-  const handlePost = async () => {
-    if (!videoFile) return;
-    setPosting(true);
+  const 投稿実行 = async () => {
+    if (!動画ファイル) return;
+    set投稿中(true);
+    setエラー("");
 
     const tokenData = localStorage.getItem("tiktok_token");
     if (!tokenData) {
-      setResult({ success: false, message: "ログインが必要です" });
-      setPosting(false);
+      setエラー("ログインが必要です");
+      set投稿中(false);
       return;
     }
 
     const { access_token } = JSON.parse(tokenData);
-    const formData = new FormData();
-    formData.append("video", videoFile);
-    formData.append("access_token", access_token);
-    formData.append("title", title);
-    formData.append("privacy_level", privacy);
-    formData.append("disable_duet", String(disableDuet));
-    formData.append("disable_stitch", String(disableStitch));
-    formData.append("disable_comment", String(disableComment));
+    const form = new FormData();
+    form.append("video", 動画ファイル);
+    form.append("access_token", access_token);
+    form.append("title", タイトル);
+    form.append("privacy_level", 公開設定);
+    form.append("disable_duet", String(デュエット無効));
+    form.append("disable_stitch", String(スティッチ無効));
+    form.append("disable_comment", String(コメント無効));
 
     try {
-      const res = await fetch("/api/post", { method: "POST", body: formData });
+      const res = await fetch("/api/post", { method: "POST", body: form });
       const data = await res.json();
       if (data.error) {
-        setResult({ success: false, message: data.error });
+        setエラー(data.error);
       } else {
-        setResult({ success: true, message: "投稿が完了しました！" });
-        setStep("done");
+        setステップ("完了");
       }
     } catch {
-      setResult({ success: false, message: "投稿に失敗しました" });
+      setエラー("投稿に失敗しました。もう一度お試しください。");
     } finally {
-      setPosting(false);
+      set投稿中(false);
     }
+  };
+
+  const リセット = () => {
+    setステップ("編集");
+    set動画ファイル(null);
+    set動画URL(null);
+    setタイトル("");
+    set公開設定("PUBLIC_TO_EVERYONE");
+    setエラー("");
   };
 
   return (
     <main className="min-h-screen bg-black text-white flex flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-8 py-5 bg-black border-b border-gray-800">
+      <header className="flex items-center justify-between px-8 py-5 border-b border-gray-800">
         <a href="/" className="flex items-center gap-3">
           <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
             <span className="text-black font-bold text-xl">P</span>
           </div>
-          <span className="text-white font-bold text-xl tracking-wide">Poston</span>
+          <span className="font-bold text-xl tracking-wide">Poston</span>
         </a>
         <nav className="flex gap-6 text-sm">
           <a href="/dashboard" className="text-gray-400 hover:text-white transition">ダッシュボード</a>
           <a href="/analytics" className="text-gray-400 hover:text-white transition">アナリティクス</a>
           <a href="/analysis" className="text-gray-400 hover:text-white transition">傾向分析</a>
-          <a href="/post" className="text-white font-bold border-b border-white pb-0.5">投稿</a>
+          <span className="text-white font-bold border-b border-white pb-0.5">投稿</span>
         </nav>
       </header>
 
-      <div className="flex-1 px-6 md:px-10 py-8 max-w-2xl mx-auto w-full">
+      <div className="flex-1 max-w-xl mx-auto w-full px-6 py-10">
 
-        {/* TikTokブランド表示（UXガイドライン必須） */}
-        <div className="flex items-center gap-2 mb-6">
-          <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white">
+        {/* TikTokへの投稿 */}
+        <div className="flex items-center gap-2 mb-8">
+          <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white shrink-0">
             <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.26 8.26 0 004.84 1.56V6.79a4.85 4.85 0 01-1.07-.1z"/>
           </svg>
-          <span className="text-white font-bold">TikTokに投稿</span>
+          <span className="font-bold text-lg">TikTokに投稿</span>
         </div>
 
-        {step === "edit" && (
+        {ステップ === "編集" && (
           <div className="space-y-6">
             {/* 動画選択 */}
             <div
               onClick={() => fileRef.current?.click()}
-              className="border-2 border-dashed border-gray-600 rounded-xl p-10 text-center cursor-pointer hover:border-white transition"
+              className="border-2 border-dashed border-gray-700 rounded-xl p-10 text-center cursor-pointer hover:border-gray-400 transition"
             >
-              {videoUrl ? (
-                <video src={videoUrl} className="max-h-48 mx-auto rounded-lg" controls />
+              {動画URL ? (
+                <video src={動画URL} className="max-h-52 mx-auto rounded-lg" controls />
               ) : (
                 <>
-                  <p className="text-4xl mb-3">🎬</p>
-                  <p className="text-white font-bold mb-1">動画を選択</p>
-                  <p className="text-gray-400 text-sm">MP4形式、最大500MB</p>
+                  <p className="text-3xl mb-3">🎬</p>
+                  <p className="font-bold mb-1">動画を選択してください</p>
+                  <p className="text-gray-400 text-sm">MP4形式・最大500MB</p>
                 </>
               )}
-              <input
-                ref={fileRef}
-                type="file"
-                accept="video/*"
-                className="hidden"
-                onChange={handleFileChange}
-              />
+              <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={ファイル選択} />
             </div>
 
             {/* タイトル */}
             <div>
               <label className="block text-sm text-gray-400 mb-2">タイトル・キャプション</label>
               <textarea
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="#ハッシュタグ を含めて入力してください"
+                value={タイトル}
+                onChange={(e) => setタイトル(e.target.value)}
+                placeholder="#ハッシュタグ を含めて入力"
                 rows={3}
                 maxLength={2200}
-                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:border-white"
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:border-gray-400"
               />
-              <p className="text-xs text-gray-500 text-right mt-1">{title.length}/2200</p>
+              <p className="text-xs text-gray-600 text-right mt-1">{タイトル.length} / 2200</p>
             </div>
 
             {/* 公開設定 */}
             <div>
               <label className="block text-sm text-gray-400 mb-2">公開設定</label>
               <select
-                value={privacy}
-                onChange={(e) => setPrivacy(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 text-sm"
+                value={公開設定}
+                onChange={(e) => set公開設定(e.target.value)}
+                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-sm"
               >
-                {PRIVACY_OPTIONS.map((o) => (
+                {公開設定一覧.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </select>
             </div>
 
-            {/* インタラクション設定 */}
+            {/* インタラクション */}
             <div>
               <label className="block text-sm text-gray-400 mb-3">インタラクション設定</label>
               <div className="space-y-3">
                 {[
-                  { label: "デュエットを無効にする", value: disableDuet, set: setDisableDuet },
-                  { label: "スティッチを無効にする", value: disableStitch, set: setDisableStitch },
-                  { label: "コメントを無効にする", value: disableComment, set: setDisableComment },
+                  { label: "デュエットを無効にする", value: デュエット無効, set: setデュエット無効 },
+                  { label: "スティッチを無効にする", value: スティッチ無効, set: setスティッチ無効 },
+                  { label: "コメントを無効にする", value: コメント無効, set: setコメント無効 },
                 ].map((item) => (
                   <label key={item.label} className="flex items-center gap-3 cursor-pointer">
                     <input
@@ -170,100 +172,87 @@ export default function PostPage() {
               </div>
             </div>
 
-            {/* ボタン */}
             <div className="flex gap-3 pt-2">
-              <a
-                href="/dashboard"
-                className="flex-1 text-center border border-gray-700 text-gray-300 rounded-full py-3 text-sm hover:border-white hover:text-white transition"
-              >
+              <a href="/dashboard" className="flex-1 text-center border border-gray-700 text-gray-300 rounded-full py-3 text-sm hover:border-gray-400 hover:text-white transition">
                 キャンセル
               </a>
               <button
-                onClick={() => setStep("preview")}
-                disabled={!videoFile}
-                className="flex-1 bg-white text-black rounded-full py-3 text-sm font-bold disabled:opacity-40 hover:bg-gray-200 transition"
+                onClick={() => setステップ("確認")}
+                disabled={!動画ファイル}
+                className="flex-1 bg-white text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:bg-gray-200 transition"
               >
-                プレビュー確認
+                内容を確認する
               </button>
             </div>
 
-            {/* 利用規約（UXガイドライン必須） */}
-            <p className="text-xs text-gray-500 text-center pt-2">
+            <p className="text-xs text-gray-600 text-center">
               投稿することで、TikTokの
-              <a href="https://www.tiktok.com/legal/terms-of-service" target="_blank" rel="noreferrer" className="underline hover:text-white">利用規約</a>
+              <a href="https://www.tiktok.com/legal/terms-of-service" target="_blank" rel="noreferrer" className="underline hover:text-gray-400">利用規約</a>
               および
-              <a href="https://www.tiktok.com/legal/privacy-policy" target="_blank" rel="noreferrer" className="underline hover:text-white">プライバシーポリシー</a>
+              <a href="https://www.tiktok.com/legal/privacy-policy" target="_blank" rel="noreferrer" className="underline hover:text-gray-400">プライバシーポリシー</a>
               に同意したものとみなされます。
             </p>
           </div>
         )}
 
-        {step === "preview" && (
+        {ステップ === "確認" && (
           <div className="space-y-6">
             <h2 className="font-bold text-lg">投稿内容の確認</h2>
 
-            {videoUrl && (
-              <video src={videoUrl} className="w-full rounded-xl max-h-72 object-contain bg-gray-900" controls />
+            {動画URL && (
+              <video src={動画URL} className="w-full rounded-xl max-h-64 object-contain bg-gray-900" controls />
             )}
 
-            <div className="bg-gray-900 rounded-xl p-5 space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">タイトル</span>
-                <span className="text-white max-w-xs text-right">{title || "（未入力）"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">公開設定</span>
-                <span className="text-white">{PRIVACY_OPTIONS.find((o) => o.value === privacy)?.label}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">デュエット</span>
-                <span className="text-white">{disableDuet ? "無効" : "有効"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">スティッチ</span>
-                <span className="text-white">{disableStitch ? "無効" : "有効"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">コメント</span>
-                <span className="text-white">{disableComment ? "無効" : "有効"}</span>
-              </div>
+            <div className="bg-gray-900 rounded-xl divide-y divide-gray-800 text-sm">
+              {[
+                { label: "タイトル", value: タイトル || "（未入力）" },
+                { label: "公開設定", value: 公開設定一覧.find((o) => o.value === 公開設定)?.label ?? "" },
+                { label: "デュエット", value: デュエット無効 ? "無効" : "有効" },
+                { label: "スティッチ", value: スティッチ無効 ? "無効" : "有効" },
+                { label: "コメント", value: コメント無効 ? "無効" : "有効" },
+              ].map((row) => (
+                <div key={row.label} className="flex justify-between px-5 py-3">
+                  <span className="text-gray-400">{row.label}</span>
+                  <span className="text-white max-w-xs text-right">{row.value}</span>
+                </div>
+              ))}
             </div>
 
-            {result && !result.success && (
-              <div className="bg-red-900/30 border border-red-700 rounded-xl p-4 text-red-400 text-sm">
-                {result.message}
+            {エラー && (
+              <div className="bg-red-950 border border-red-800 rounded-xl p-4 text-red-400 text-sm">
+                {エラー}
               </div>
             )}
 
             <div className="flex gap-3">
               <button
-                onClick={() => setStep("edit")}
-                className="flex-1 border border-gray-700 text-gray-300 rounded-full py-3 text-sm hover:border-white hover:text-white transition"
+                onClick={() => setステップ("編集")}
+                className="flex-1 border border-gray-700 text-gray-300 rounded-full py-3 text-sm hover:border-gray-400 hover:text-white transition"
               >
                 編集に戻る
               </button>
               <button
-                onClick={handlePost}
-                disabled={posting}
-                className="flex-1 bg-white text-black rounded-full py-3 text-sm font-bold disabled:opacity-40 hover:bg-gray-200 transition"
+                onClick={投稿実行}
+                disabled={投稿中}
+                className="flex-1 bg-white text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:bg-gray-200 transition"
               >
-                {posting ? "投稿中..." : "TikTokに投稿する"}
+                {投稿中 ? "投稿中..." : "TikTokに投稿する"}
               </button>
             </div>
           </div>
         )}
 
-        {step === "done" && (
+        {ステップ === "完了" && (
           <div className="text-center py-20">
-            <p className="text-5xl mb-4">🎉</p>
-            <h2 className="text-2xl font-bold mb-2">投稿完了！</h2>
-            <p className="text-gray-400 mb-8">TikTokへの投稿が完了しました</p>
+            <p className="text-5xl mb-4">✅</p>
+            <h2 className="text-2xl font-bold mb-2">投稿が完了しました</h2>
+            <p className="text-gray-400 mb-8">TikTokに動画を投稿しました</p>
             <div className="flex gap-3 justify-center">
-              <a href="/dashboard" className="border border-gray-700 text-gray-300 rounded-full px-6 py-3 text-sm hover:border-white hover:text-white transition">
+              <a href="/dashboard" className="border border-gray-700 text-gray-300 rounded-full px-6 py-3 text-sm hover:border-gray-400 hover:text-white transition">
                 ダッシュボードへ
               </a>
               <button
-                onClick={() => { setStep("edit"); setVideoFile(null); setVideoUrl(null); setTitle(""); setResult(null); }}
+                onClick={リセット}
                 className="bg-white text-black rounded-full px-6 py-3 text-sm font-bold hover:bg-gray-200 transition"
               >
                 続けて投稿する
@@ -273,8 +262,8 @@ export default function PostPage() {
         )}
       </div>
 
-      <footer className="bg-black border-t border-gray-800 text-gray-500 text-sm text-center py-6">
-        <p>© 2026 Poston. Contact: otuka.y@al-bo.io</p>
+      <footer className="border-t border-gray-800 text-gray-600 text-sm text-center py-6">
+        © 2026 Poston
       </footer>
     </main>
   );
