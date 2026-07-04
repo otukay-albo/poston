@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Header from "../components/Header";
 
 const 公開設定一覧 = [
@@ -22,7 +22,22 @@ export default function 投稿ページ() {
   const [コメント無効, setコメント無効] = useState(false);
   const [投稿中, set投稿中] = useState(false);
   const [エラー, setエラー] = useState("");
+  const [アカウント名, setアカウント名] = useState("");
+  const [アバター, setアバター] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const tokenData = localStorage.getItem("tiktok_token");
+    if (!tokenData) return;
+    const { access_token, open_id } = JSON.parse(tokenData);
+    fetch(`/api/user?access_token=${access_token}&open_id=${open_id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.display_name) setアカウント名(d.display_name);
+        if (d.avatar_url) setアバター(d.avatar_url);
+      })
+      .catch(() => {});
+  }, []);
 
   const ファイル選択 = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -82,11 +97,22 @@ export default function 投稿ページ() {
       <Header current="post" />
 
       <div className="flex-1 max-w-xl mx-auto w-full px-6 py-10">
-        <div className="flex items-center gap-2 mb-8">
-          <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current shrink-0">
-            <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.26 8.26 0 004.84 1.56V6.79a4.85 4.85 0 01-1.07-.1z"/>
-          </svg>
-          <span className="font-bold text-lg">TikTokに投稿</span>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-2">
+            <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current shrink-0">
+              <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.26 8.26 0 004.84 1.56V6.79a4.85 4.85 0 01-1.07-.1z"/>
+            </svg>
+            <span className="font-bold text-lg">TikTokに投稿</span>
+          </div>
+          {アカウント名 && (
+            <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
+              {アバター && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={アバター} alt={アカウント名} className="w-6 h-6 rounded-full" />
+              )}
+              <span className="text-sm font-medium">{アカウント名}</span>
+            </div>
+          )}
         </div>
 
         {ステップ === "編集" && (
