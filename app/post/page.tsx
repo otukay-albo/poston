@@ -10,6 +10,11 @@ const 公開設定ラベル: Record<string, string> = {
   SELF_ONLY: "自分のみ（非公開）",
 };
 
+// TikTok Content Posting API の審査（App review）が未完了のため、
+// 投稿は「自分のみ（非公開）」に限定される。
+// 審査通過後に true にすると、アカウントが許可する他の公開範囲も選べるようになる。
+const 審査済み = false;
+
 type ステップ = "編集" | "確認" | "完了";
 
 export default function 投稿ページ() {
@@ -55,8 +60,15 @@ export default function 投稿ページ() {
         if (d.creator_nickname) setアカウント名(d.creator_nickname);
         if (d.creator_avatar_url) setアバター(d.creator_avatar_url);
         const options: string[] = d.privacy_level_options || [];
-        set公開設定候補(options);
-        if (options.length > 0) set公開設定(options[0]);
+        if (審査済み) {
+          set公開設定候補(options);
+          // 最もプライベートな SELF_ONLY を初期値に（あれば）
+          set公開設定(options.includes("SELF_ONLY") ? "SELF_ONLY" : options[0] || "");
+        } else {
+          // 審査前は非公開のみ許可される
+          set公開設定候補(["SELF_ONLY"]);
+          set公開設定("SELF_ONLY");
+        }
         setコメント不可(!!d.comment_disabled);
         setデュエット不可(!!d.duet_disabled);
         setスティッチ不可(!!d.stitch_disabled);
@@ -119,7 +131,8 @@ export default function 投稿ページ() {
       });
       const initData = await initRes.json();
       if (!initRes.ok || initData.error) {
-        setエラー(initData.error || `投稿の初期化に失敗しました (${initRes.status})`);
+        const codeStr = initData.code ? `［${initData.code}］` : "";
+        setエラー((initData.error || `投稿の初期化に失敗しました (${initRes.status})`) + codeStr);
         set投稿中(false);
         return;
       }
@@ -266,6 +279,11 @@ export default function 投稿ページ() {
                   <option key={v} value={v}>{公開設定ラベル[v] || v}</option>
                 ))}
               </select>
+              {!審査済み && (
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">
+                  ※ 現在はTikTok審査前のため「自分のみ（非公開）」でのみ投稿できます。公開投稿には審査通過が必要です。
+                </p>
+              )}
             </div>
 
             <div>

@@ -48,7 +48,11 @@ export async function POST(req: NextRequest) {
 
   if (initData.error && initData.error.code !== "ok") {
     return NextResponse.json(
-      { error: initData.error.message || "TikTokの初期化に失敗しました", detail: initData.error },
+      {
+        error: initData.error.message || "TikTokの初期化に失敗しました",
+        code: initData.error.code,
+        detail: initData.error,
+      },
       { status: 400 }
     );
   }
