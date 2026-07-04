@@ -280,8 +280,8 @@ export default function 投稿ページ() {
                 ))}
               </select>
               {!審査済み && (
-                <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">
-                  ※ 現在はTikTok審査前のため「自分のみ（非公開）」でのみ投稿できます。公開投稿には審査通過が必要です。
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-2 leading-relaxed">
+                  ※ TikTok審査前のため、①投稿アカウントを「非公開アカウント」に設定し、②公開範囲「自分のみ」でのみ投稿できます。公開投稿には審査（App review）の通過が必要です。
                 </p>
               )}
             </div>
