@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Header from "../components/Header";
 
 interface Video {
   id: string;
@@ -38,7 +39,6 @@ export default function DashboardPage() {
     }
 
     const { access_token, open_id } = JSON.parse(tokenData);
-
     Promise.all([
       fetch(`/api/user?access_token=${access_token}&open_id=${open_id}`).then((r) => r.json()),
       fetch(`/api/videos?access_token=${access_token}&open_id=${open_id}`).then((r) => r.json()),
@@ -68,10 +68,10 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-black text-white flex items-center justify-center">
+      <main className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-400">データを読み込み中...</p>
+          <div className="w-10 h-10 border-4 border-black dark:border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500 dark:text-gray-400">データを読み込み中...</p>
         </div>
       </main>
     );
@@ -79,10 +79,10 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-black text-white flex items-center justify-center">
+      <main className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-400 mb-4">エラー: {error}</p>
-          <button onClick={() => router.push("/")} className="bg-white text-black px-6 py-2 rounded-full font-bold">
+          <p className="text-red-500 mb-4">エラー: {error}</p>
+          <button onClick={() => router.push("/")} className="bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-full font-bold">
             トップに戻る
           </button>
         </div>
@@ -91,108 +91,71 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white flex flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between px-8 py-5 bg-black border-b border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
-            <span className="text-black font-bold text-xl">P</span>
-          </div>
-          <span className="text-white font-bold text-xl tracking-wide">Poston</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <a href="/analytics" className="text-sm text-gray-300 hover:text-white transition border border-gray-700 hover:border-white px-4 py-1.5 rounded-full">
-            アナリティクス
-          </a>
-          <a href="/analysis" className="text-sm text-gray-300 hover:text-white transition border border-gray-700 hover:border-white px-4 py-1.5 rounded-full">
-            傾向分析
-          </a>
-          <a href="/post" className="text-sm bg-white text-black font-bold hover:bg-gray-200 transition px-4 py-1.5 rounded-full">
-            投稿
-          </a>
-          {user && (
+    <main className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col">
+      <Header current="dashboard" />
+
+      {user && (
+        <section className="px-8 py-8 border-b border-gray-200 dark:border-gray-800">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               {user.avatar_url && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={user.avatar_url} alt={user.display_name} className="w-9 h-9 rounded-full" />
+                <img src={user.avatar_url} alt={user.display_name} className="w-10 h-10 rounded-full" />
               )}
-              <span className="text-gray-300 text-sm">{user.display_name}</span>
+              <div>
+                <p className="font-bold">{user.display_name}</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">TikTokアカウント</p>
+              </div>
             </div>
-          )}
-          <button
-            onClick={handleLogout}
-            className="text-gray-400 hover:text-white text-sm border border-gray-700 px-4 py-2 rounded-full transition"
-          >
-            ログアウト
-          </button>
-        </div>
-      </header>
-
-      {/* Stats */}
-      {user && (
-        <section className="px-8 py-8 border-b border-gray-800">
-          <h2 className="text-xl font-bold mb-4">アカウント概要</h2>
+            <button
+              onClick={handleLogout}
+              className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white text-sm border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-full transition"
+            >
+              ログアウト
+            </button>
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gray-900 rounded-xl p-5 text-center">
-              <p className="text-3xl font-bold">{user.follower_count?.toLocaleString() ?? "-"}</p>
-              <p className="text-gray-400 text-sm mt-1">フォロワー</p>
-            </div>
-            <div className="bg-gray-900 rounded-xl p-5 text-center">
-              <p className="text-3xl font-bold">{user.video_count?.toLocaleString() ?? videos.length}</p>
-              <p className="text-gray-400 text-sm mt-1">動画数</p>
-            </div>
-            <div className="bg-gray-900 rounded-xl p-5 text-center">
-              <p className="text-3xl font-bold">
-                {videos.reduce((s, v) => s + (v.view_count || 0), 0).toLocaleString()}
-              </p>
-              <p className="text-gray-400 text-sm mt-1">総再生数</p>
-            </div>
-            <div className="bg-gray-900 rounded-xl p-5 text-center">
-              <p className="text-3xl font-bold">
-                {videos.reduce((s, v) => s + (v.like_count || 0), 0).toLocaleString()}
-              </p>
-              <p className="text-gray-400 text-sm mt-1">総いいね数</p>
-            </div>
+            {[
+              { label: "フォロワー", value: user.follower_count?.toLocaleString() ?? "-" },
+              { label: "動画数", value: (user.video_count ?? videos.length).toLocaleString() },
+              { label: "総再生数", value: videos.reduce((s, v) => s + (v.view_count || 0), 0).toLocaleString() },
+              { label: "総いいね数", value: videos.reduce((s, v) => s + (v.like_count || 0), 0).toLocaleString() },
+            ].map((card) => (
+              <div key={card.label} className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5 text-center">
+                <p className="text-3xl font-bold">{card.value}</p>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{card.label}</p>
+              </div>
+            ))}
           </div>
         </section>
       )}
 
-      {/* Videos */}
       <section className="px-8 py-8 flex-1">
         <h2 className="text-xl font-bold mb-6">動画一覧</h2>
         {videos.length === 0 ? (
-          <p className="text-gray-400">動画が見つかりませんでした</p>
+          <p className="text-gray-500 dark:text-gray-400">動画が見つかりませんでした</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {videos.map((video) => (
-              <div key={video.id} className="bg-gray-900 rounded-xl overflow-hidden">
+              <div key={video.id} className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden">
                 {video.cover_image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={video.cover_image_url}
-                    alt={video.title}
-                    className="w-full h-48 object-cover"
-                  />
+                  <img src={video.cover_image_url} alt={video.title} className="w-full h-48 object-cover" />
                 )}
                 <div className="p-4">
                   <p className="text-sm font-medium mb-3 line-clamp-2">{video.title || "（タイトルなし）"}</p>
-                  <div className="grid grid-cols-2 gap-2 text-center text-xs text-gray-400">
-                    <div>
-                      <p className="text-white font-bold text-base">{video.view_count?.toLocaleString() ?? "-"}</p>
-                      <p>再生</p>
-                    </div>
-                    <div>
-                      <p className="text-white font-bold text-base">{video.like_count?.toLocaleString() ?? "-"}</p>
-                      <p>いいね</p>
-                    </div>
-                    <div>
-                      <p className="text-white font-bold text-base">{video.comment_count?.toLocaleString() ?? "-"}</p>
-                      <p>コメント</p>
-                    </div>
-                    <div>
-                      <p className="text-white font-bold text-base">{video.share_count?.toLocaleString() ?? "-"}</p>
-                      <p>シェア</p>
-                    </div>
+                  <div className="grid grid-cols-2 gap-2 text-center text-xs text-gray-500 dark:text-gray-400">
+                    {[
+                      { label: "再生", value: video.view_count },
+                      { label: "いいね", value: video.like_count },
+                      { label: "コメント", value: video.comment_count },
+                      { label: "シェア", value: video.share_count },
+                    ].map((stat) => (
+                      <div key={stat.label}>
+                        <p className="font-bold text-base text-black dark:text-white">{stat.value?.toLocaleString() ?? "-"}</p>
+                        <p>{stat.label}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -201,8 +164,8 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <footer className="bg-black border-t border-gray-800 text-gray-500 text-sm text-center py-6">
-        <p>© 2026 Poston. Contact: otuka.y@al-bo.io</p>
+      <footer className="border-t border-gray-200 dark:border-gray-800 text-gray-400 text-sm text-center py-6">
+        © 2026 Poston
       </footer>
     </main>
   );

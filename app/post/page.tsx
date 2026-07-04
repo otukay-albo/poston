@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Header from "../components/Header";
 
 const 公開設定一覧 = [
   { value: "PUBLIC_TO_EVERYONE", label: "全員に公開" },
@@ -77,27 +78,12 @@ export default function 投稿ページ() {
   };
 
   return (
-    <main className="min-h-screen bg-black text-white flex flex-col">
-      <header className="flex items-center justify-between px-8 py-5 border-b border-gray-800">
-        <a href="/" className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
-            <span className="text-black font-bold text-xl">P</span>
-          </div>
-          <span className="font-bold text-xl tracking-wide">Poston</span>
-        </a>
-        <nav className="flex gap-6 text-sm">
-          <a href="/dashboard" className="text-gray-400 hover:text-white transition">ダッシュボード</a>
-          <a href="/analytics" className="text-gray-400 hover:text-white transition">アナリティクス</a>
-          <a href="/analysis" className="text-gray-400 hover:text-white transition">傾向分析</a>
-          <span className="text-white font-bold border-b border-white pb-0.5">投稿</span>
-        </nav>
-      </header>
+    <main className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col">
+      <Header current="post" />
 
       <div className="flex-1 max-w-xl mx-auto w-full px-6 py-10">
-
-        {/* TikTokへの投稿 */}
         <div className="flex items-center gap-2 mb-8">
-          <svg viewBox="0 0 24 24" className="w-6 h-6 fill-white shrink-0">
+          <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current shrink-0">
             <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.26 8.26 0 004.84 1.56V6.79a4.85 4.85 0 01-1.07-.1z"/>
           </svg>
           <span className="font-bold text-lg">TikTokに投稿</span>
@@ -105,10 +91,9 @@ export default function 投稿ページ() {
 
         {ステップ === "編集" && (
           <div className="space-y-6">
-            {/* 動画選択 */}
             <div
               onClick={() => fileRef.current?.click()}
-              className="border-2 border-dashed border-gray-700 rounded-xl p-10 text-center cursor-pointer hover:border-gray-400 transition"
+              className="border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-10 text-center cursor-pointer hover:border-gray-500 dark:hover:border-gray-400 transition"
             >
               {動画URL ? (
                 <video src={動画URL} className="max-h-52 mx-auto rounded-lg" controls />
@@ -116,33 +101,31 @@ export default function 投稿ページ() {
                 <>
                   <p className="text-3xl mb-3">🎬</p>
                   <p className="font-bold mb-1">動画を選択してください</p>
-                  <p className="text-gray-400 text-sm">MP4形式・最大500MB</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">MP4形式・最大500MB</p>
                 </>
               )}
               <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={ファイル選択} />
             </div>
 
-            {/* タイトル */}
             <div>
-              <label className="block text-sm text-gray-400 mb-2">タイトル・キャプション</label>
+              <label className="block text-sm text-gray-500 dark:text-gray-400 mb-2">タイトル・キャプション</label>
               <textarea
                 value={タイトル}
                 onChange={(e) => setタイトル(e.target.value)}
                 placeholder="#ハッシュタグ を含めて入力"
                 rows={3}
                 maxLength={2200}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:border-gray-400"
+                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-sm resize-none focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
               />
-              <p className="text-xs text-gray-600 text-right mt-1">{タイトル.length} / 2200</p>
+              <p className="text-xs text-gray-400 dark:text-gray-600 text-right mt-1">{タイトル.length} / 2200</p>
             </div>
 
-            {/* 公開設定 */}
             <div>
-              <label className="block text-sm text-gray-400 mb-2">公開設定</label>
+              <label className="block text-sm text-gray-500 dark:text-gray-400 mb-2">公開設定</label>
               <select
                 value={公開設定}
                 onChange={(e) => set公開設定(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-sm"
+                className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-3 text-sm"
               >
                 {公開設定一覧.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -150,9 +133,8 @@ export default function 投稿ページ() {
               </select>
             </div>
 
-            {/* インタラクション */}
             <div>
-              <label className="block text-sm text-gray-400 mb-3">インタラクション設定</label>
+              <label className="block text-sm text-gray-500 dark:text-gray-400 mb-3">インタラクション設定</label>
               <div className="space-y-3">
                 {[
                   { label: "デュエットを無効にする", value: デュエット無効, set: setデュエット無効 },
@@ -164,32 +146,32 @@ export default function 投稿ページ() {
                       type="checkbox"
                       checked={item.value}
                       onChange={(e) => item.set(e.target.checked)}
-                      className="w-4 h-4 accent-white"
+                      className="w-4 h-4"
                     />
-                    <span className="text-sm text-gray-300">{item.label}</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{item.label}</span>
                   </label>
                 ))}
               </div>
             </div>
 
             <div className="flex gap-3 pt-2">
-              <a href="/dashboard" className="flex-1 text-center border border-gray-700 text-gray-300 rounded-full py-3 text-sm hover:border-gray-400 hover:text-white transition">
+              <a href="/dashboard" className="flex-1 text-center border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full py-3 text-sm hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white transition">
                 キャンセル
               </a>
               <button
                 onClick={() => setステップ("確認")}
                 disabled={!動画ファイル}
-                className="flex-1 bg-white text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:bg-gray-200 transition"
+                className="flex-1 bg-black dark:bg-white text-white dark:text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:opacity-80 transition"
               >
                 内容を確認する
               </button>
             </div>
 
-            <p className="text-xs text-gray-600 text-center">
+            <p className="text-xs text-gray-400 dark:text-gray-600 text-center">
               投稿することで、TikTokの
-              <a href="https://www.tiktok.com/legal/terms-of-service" target="_blank" rel="noreferrer" className="underline hover:text-gray-400">利用規約</a>
+              <a href="https://www.tiktok.com/legal/terms-of-service" target="_blank" rel="noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400">利用規約</a>
               および
-              <a href="https://www.tiktok.com/legal/privacy-policy" target="_blank" rel="noreferrer" className="underline hover:text-gray-400">プライバシーポリシー</a>
+              <a href="https://www.tiktok.com/legal/privacy-policy" target="_blank" rel="noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400">プライバシーポリシー</a>
               に同意したものとみなされます。
             </p>
           </div>
@@ -200,10 +182,10 @@ export default function 投稿ページ() {
             <h2 className="font-bold text-lg">投稿内容の確認</h2>
 
             {動画URL && (
-              <video src={動画URL} className="w-full rounded-xl max-h-64 object-contain bg-gray-900" controls />
+              <video src={動画URL} className="w-full rounded-xl max-h-64 object-contain bg-gray-100 dark:bg-gray-900" controls />
             )}
 
-            <div className="bg-gray-900 rounded-xl divide-y divide-gray-800 text-sm">
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-xl divide-y divide-gray-200 dark:divide-gray-800 text-sm">
               {[
                 { label: "タイトル", value: タイトル || "（未入力）" },
                 { label: "公開設定", value: 公開設定一覧.find((o) => o.value === 公開設定)?.label ?? "" },
@@ -212,14 +194,14 @@ export default function 投稿ページ() {
                 { label: "コメント", value: コメント無効 ? "無効" : "有効" },
               ].map((row) => (
                 <div key={row.label} className="flex justify-between px-5 py-3">
-                  <span className="text-gray-400">{row.label}</span>
-                  <span className="text-white max-w-xs text-right">{row.value}</span>
+                  <span className="text-gray-500 dark:text-gray-400">{row.label}</span>
+                  <span className="max-w-xs text-right">{row.value}</span>
                 </div>
               ))}
             </div>
 
             {エラー && (
-              <div className="bg-red-950 border border-red-800 rounded-xl p-4 text-red-400 text-sm">
+              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm">
                 {エラー}
               </div>
             )}
@@ -227,14 +209,14 @@ export default function 投稿ページ() {
             <div className="flex gap-3">
               <button
                 onClick={() => setステップ("編集")}
-                className="flex-1 border border-gray-700 text-gray-300 rounded-full py-3 text-sm hover:border-gray-400 hover:text-white transition"
+                className="flex-1 border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full py-3 text-sm hover:border-black dark:hover:border-white transition"
               >
                 編集に戻る
               </button>
               <button
                 onClick={投稿実行}
                 disabled={投稿中}
-                className="flex-1 bg-white text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:bg-gray-200 transition"
+                className="flex-1 bg-black dark:bg-white text-white dark:text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:opacity-80 transition"
               >
                 {投稿中 ? "投稿中..." : "TikTokに投稿する"}
               </button>
@@ -246,14 +228,14 @@ export default function 投稿ページ() {
           <div className="text-center py-20">
             <p className="text-5xl mb-4">✅</p>
             <h2 className="text-2xl font-bold mb-2">投稿が完了しました</h2>
-            <p className="text-gray-400 mb-8">TikTokに動画を投稿しました</p>
+            <p className="text-gray-500 dark:text-gray-400 mb-8">TikTokに動画を投稿しました</p>
             <div className="flex gap-3 justify-center">
-              <a href="/dashboard" className="border border-gray-700 text-gray-300 rounded-full px-6 py-3 text-sm hover:border-gray-400 hover:text-white transition">
+              <a href="/dashboard" className="border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full px-6 py-3 text-sm hover:border-black dark:hover:border-white transition">
                 ダッシュボードへ
               </a>
               <button
                 onClick={リセット}
-                className="bg-white text-black rounded-full px-6 py-3 text-sm font-bold hover:bg-gray-200 transition"
+                className="bg-black dark:bg-white text-white dark:text-black rounded-full px-6 py-3 text-sm font-bold hover:opacity-80 transition"
               >
                 続けて投稿する
               </button>
@@ -262,7 +244,7 @@ export default function 投稿ページ() {
         )}
       </div>
 
-      <footer className="border-t border-gray-800 text-gray-600 text-sm text-center py-6">
+      <footer className="border-t border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-600 text-sm text-center py-6">
         © 2026 Poston
       </footer>
     </main>
