@@ -134,7 +134,8 @@ export default function 投稿ページ() {
       const putRes = await fetch(initData.upload_url, {
         method: "PUT",
         headers: {
-          "Content-Type": "video/mp4",
+          // ファイルの実際の形式に合わせる（MP4 / MOV 両対応）
+          "Content-Type": 動画ファイル.type || "video/mp4",
           "Content-Range": `bytes 0-${動画ファイル.size - 1}/${動画ファイル.size}`,
         },
         body: 動画ファイル,
