@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
-import Header from "../components/Header";
+import AppShell from "../components/AppShell";
 
 const ACCOUNTS = ["全アカウント", "yuki_beauty", "otayui", "account1", "account2", "account3"];
 const REAL_ACCOUNTS = ["yuki_beauty", "otayui", "account1", "account2", "account3"];
@@ -150,9 +150,7 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col">
-      <Header current="analytics" />
-
+    <AppShell current="analytics" title="アナリティクス">
       <div className="flex-1 px-6 md:px-10 py-8 max-w-6xl mx-auto w-full">
         <div className="flex flex-wrap gap-4 mb-8">
           <select
@@ -289,6 +287,6 @@ export default function AnalyticsPage() {
       <footer className="border-t border-gray-200 dark:border-gray-800 text-gray-400 text-sm text-center py-6">
         © 2026 Poston
       </footer>
-    </main>
+    </AppShell>
   );
 }

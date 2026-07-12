@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Header from "../components/Header";
+import AppShell from "../components/AppShell";
 import { getValidAccessToken, getStoredToken, setAccountProfile, logoutActiveAccount } from "../lib/tiktokToken";
 
 interface Video {
@@ -101,9 +101,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col">
-      <Header current="dashboard" />
-
+    <AppShell current="dashboard" title="ダッシュボード">
       {user && (
         <section className="px-8 py-8 border-b border-gray-200 dark:border-gray-800">
           <div className="flex items-center justify-between mb-4">
@@ -177,6 +175,6 @@ export default function DashboardPage() {
       <footer className="border-t border-gray-200 dark:border-gray-800 text-gray-400 text-sm text-center py-6">
         © 2026 Poston
       </footer>
-    </main>
+    </AppShell>
   );
 }

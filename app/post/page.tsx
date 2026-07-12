@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Header from "../components/Header";
+import AppShell from "../components/AppShell";
 import { getValidAccessToken, clearToken, setAccountProfile } from "../lib/tiktokToken";
 
 const 公開設定ラベル: Record<string, string> = {
@@ -172,9 +172,7 @@ export default function 投稿ページ() {
   };
 
   return (
-    <main className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col">
-      <Header current="post" />
-
+    <AppShell current="post" title="投稿">
       <div className="flex-1 max-w-xl mx-auto w-full px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2">
@@ -411,6 +409,6 @@ export default function 投稿ページ() {
       <footer className="border-t border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-600 text-sm text-center py-6">
         © 2026 Poston
       </footer>
-    </main>
+    </AppShell>
   );
 }
