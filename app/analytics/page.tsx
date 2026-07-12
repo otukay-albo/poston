@@ -113,6 +113,42 @@ export default function AnalyticsPage() {
   const videoList = useMemo(() => [...latestByVideo].sort((a, b) => b.再生数 - a.再生数), [latestByVideo]);
   const isEngRate = METRICS[metricIdx].key === "エンゲージメント率(%)";
 
+  // CSV書き出し（Excel/スプレッドシートで開ける形式）
+  const escapeCSV = (val: string | number) => {
+    const s = String(val ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+
+  const downloadCSV = () => {
+    const headers = ["タイトル", "再生数", "いいね", "いいね率(%)", "コメント", "共有", "共有率(%)", "エンゲージ率(%)", "投稿日時"];
+    const lines = videoList.map((v) => {
+      const likeRate = v.再生数 > 0 ? ((v.いいね数 / v.再生数) * 100).toFixed(2) : "0.00";
+      const shareRate = v.再生数 > 0 ? ((v.シェア数 / v.再生数) * 100).toFixed(2) : "0.00";
+      return [
+        v.タイトル || "（タイトルなし）",
+        v.再生数,
+        v.いいね数,
+        likeRate,
+        v.コメント数,
+        v.シェア数,
+        shareRate,
+        Number(v["エンゲージメント率(%)"]).toFixed(2),
+        v.投稿日時 || "",
+      ]
+        .map(escapeCSV)
+        .join(",");
+    });
+    // 先頭のBOM(﻿)でExcelがUTF-8として正しく開ける
+    const csv = "﻿" + [headers.join(","), ...lines].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `poston_${account}_${dateFrom}_${dateTo}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col">
       <Header current="analytics" />
@@ -195,8 +231,15 @@ export default function AnalyticsPage() {
             </div>
 
             <div className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between gap-4">
                 <h2 className="font-bold text-lg">投稿一覧（再生数順）</h2>
+                <button
+                  onClick={downloadCSV}
+                  disabled={videoList.length === 0}
+                  className="text-sm border border-gray-300 dark:border-gray-700 rounded-full px-4 py-1.5 whitespace-nowrap hover:border-black dark:hover:border-white transition disabled:opacity-30"
+                >
+                  ⬇ CSVダウンロード
+                </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
