@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Header from "../components/Header";
-import { getValidAccessToken, clearToken } from "../lib/tiktokToken";
+import { getValidAccessToken, clearToken, setAccountProfile } from "../lib/tiktokToken";
 
 const 公開設定ラベル: Record<string, string> = {
   PUBLIC_TO_EVERYONE: "全員に公開",
@@ -60,6 +60,8 @@ export default function 投稿ページ() {
         }
         if (d.creator_nickname) setアカウント名(d.creator_nickname);
         if (d.creator_avatar_url) setアバター(d.creator_avatar_url);
+        // アカウント切替UIの表示用に名前・アイコンを保存
+        setAccountProfile(token.open_id, d.creator_nickname, d.creator_avatar_url);
         // TikTok UXガイドライン: creator_info の privacy_level_options をそのまま表示し、
         // デフォルト値は設定しない（ユーザーが必ず手動で選択する）
         set公開設定候補(d.privacy_level_options || []);

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
-import { getValidAccessToken, getStoredToken, clearToken } from "../lib/tiktokToken";
+import { getValidAccessToken, getStoredToken, setAccountProfile, logoutActiveAccount } from "../lib/tiktokToken";
 
 interface Video {
   id: string;
@@ -48,6 +48,8 @@ export default function DashboardPage() {
         if (userData.error) throw new Error(userData.error);
         setUser(userData);
         setVideos(videoData.videos || []);
+        // アカウント切替UIに表示する名前・アイコンを保存
+        setAccountProfile(open_id, userData.display_name, userData.avatar_url);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -65,8 +67,13 @@ export default function DashboardPage() {
         body: JSON.stringify({ access_token: token.access_token }),
       });
     }
-    clearToken();
-    router.push("/");
+    // アクティブなアカウントだけログアウト。他のアカウントが残っていればそちらに切替。
+    const remaining = logoutActiveAccount();
+    if (remaining > 0) {
+      window.location.reload();
+    } else {
+      router.push("/");
+    }
   };
 
   if (loading) {

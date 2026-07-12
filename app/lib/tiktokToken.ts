@@ -1,8 +1,10 @@
-// TikTokトークンの保存・取得・自動更新をまとめたヘルパー。
-// アクセストークンは約24時間で切れるため、期限が近づいたら
-// リフレッシュトークンで裏側で自動更新し、再ログインを不要にする。
+// TikTokトークンの保存・取得・自動更新＋複数アカウント管理をまとめたヘルパー。
+// - アクティブアカウントのトークンは "tiktok_token" に保存（後方互換）
+// - ログイン済み全アカウントは "tiktok_accounts" に配列で保存
+// - アクセストークンは約24時間で切れるため、失効間近で自動リフレッシュする
 
-const STORAGE_KEY = "tiktok_token";
+const ACTIVE_KEY = "tiktok_token";
+const ACCOUNTS_KEY = "tiktok_accounts";
 
 export interface StoredToken {
   access_token: string;
@@ -12,17 +14,27 @@ export interface StoredToken {
   expires_in?: number;
   refresh_expires_in?: number;
   expires_at?: number; // アクセストークンの失効時刻（ミリ秒）
+  display_name?: string; // アカウント切替の表示用
+  avatar_url?: string; // アカウント切替の表示用
 }
 
-// APIレスポンスを受け取り、失効時刻を計算して保存する
-export function saveToken(data: Partial<StoredToken>): void {
-  const expires_at =
-    typeof data.expires_in === "number" ? Date.now() + data.expires_in * 1000 : undefined;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, expires_at }));
+function readAccounts(): StoredToken[] {
+  const raw = localStorage.getItem(ACCOUNTS_KEY);
+  if (!raw) return [];
+  try {
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? (list as StoredToken[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeAccounts(list: StoredToken[]): void {
+  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(list));
 }
 
 export function getStoredToken(): StoredToken | null {
-  const raw = localStorage.getItem(STORAGE_KEY);
+  const raw = localStorage.getItem(ACTIVE_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as StoredToken;
@@ -31,8 +43,77 @@ export function getStoredToken(): StoredToken | null {
   }
 }
 
+// APIレスポンスを受け取り、失効時刻を計算して保存し、アクティブに設定する。
+// 同じopen_idの既存アカウントがあれば表示情報を引き継いで更新する。
+export function saveToken(data: Partial<StoredToken>): void {
+  const expires_at =
+    typeof data.expires_in === "number" ? Date.now() + data.expires_in * 1000 : undefined;
+  const existing =
+    readAccounts().find((a) => a.open_id === data.open_id) ||
+    (getStoredToken()?.open_id === data.open_id ? getStoredToken() : null);
+  const record: StoredToken = {
+    ...(existing || {}),
+    ...data,
+    expires_at,
+  } as StoredToken;
+
+  localStorage.setItem(ACTIVE_KEY, JSON.stringify(record));
+  const list = readAccounts().filter((a) => a.open_id !== record.open_id);
+  list.push(record);
+  writeAccounts(list);
+}
+
+export function listAccounts(): StoredToken[] {
+  return readAccounts();
+}
+
+// アカウントを切り替える（成功時true）
+export function switchAccount(open_id: string): boolean {
+  const target = readAccounts().find((a) => a.open_id === open_id);
+  if (!target) return false;
+  localStorage.setItem(ACTIVE_KEY, JSON.stringify(target));
+  return true;
+}
+
+// アカウントを削除する。削除したのがアクティブなら、残りの先頭に切り替える。
+export function removeAccount(open_id: string): void {
+  const list = readAccounts().filter((a) => a.open_id !== open_id);
+  writeAccounts(list);
+  const active = getStoredToken();
+  if (active && active.open_id === open_id) {
+    if (list.length > 0) {
+      localStorage.setItem(ACTIVE_KEY, JSON.stringify(list[0]));
+    } else {
+      localStorage.removeItem(ACTIVE_KEY);
+    }
+  }
+}
+
+// アクティブアカウントだけログアウトし、残りがあれば切り替える。残りの数を返す。
+export function logoutActiveAccount(): number {
+  const active = getStoredToken();
+  if (active) removeAccount(active.open_id);
+  return readAccounts().length;
+}
+
+// アカウントの表示名/アイコンを保存（切替UIの表示用）
+export function setAccountProfile(open_id: string, display_name?: string, avatar_url?: string): void {
+  const merge = (t: StoredToken): StoredToken => ({
+    ...t,
+    display_name: display_name ?? t.display_name,
+    avatar_url: avatar_url ?? t.avatar_url,
+  });
+  const active = getStoredToken();
+  if (active && active.open_id === open_id) {
+    localStorage.setItem(ACTIVE_KEY, JSON.stringify(merge(active)));
+  }
+  writeAccounts(readAccounts().map((a) => (a.open_id === open_id ? merge(a) : a)));
+}
+
+// 全アカウントを削除（完全ログアウト）
 export function clearToken(): void {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(ACTIVE_KEY);
+  localStorage.removeItem(ACCOUNTS_KEY);
 }
 
 // 有効なアクセストークンを返す。期限切れ間近なら自動でリフレッシュする。
