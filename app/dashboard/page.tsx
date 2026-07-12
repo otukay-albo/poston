@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "../components/Header";
+import { getValidAccessToken, getStoredToken, clearToken } from "../lib/tiktokToken";
 
 interface Video {
   id: string;
@@ -32,37 +33,39 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const tokenData = localStorage.getItem("tiktok_token");
-    if (!tokenData) {
-      router.push("/");
-      return;
-    }
-
-    const { access_token, open_id } = JSON.parse(tokenData);
-    Promise.all([
-      fetch(`/api/user?access_token=${access_token}&open_id=${open_id}`).then((r) => r.json()),
-      fetch(`/api/videos?access_token=${access_token}&open_id=${open_id}`).then((r) => r.json()),
-    ])
-      .then(([userData, videoData]) => {
+    (async () => {
+      const token = await getValidAccessToken();
+      if (!token) {
+        router.push("/");
+        return;
+      }
+      const { access_token, open_id } = token;
+      try {
+        const [userData, videoData] = await Promise.all([
+          fetch(`/api/user?access_token=${access_token}&open_id=${open_id}`).then((r) => r.json()),
+          fetch(`/api/videos?access_token=${access_token}&open_id=${open_id}`).then((r) => r.json()),
+        ]);
         if (userData.error) throw new Error(userData.error);
         setUser(userData);
         setVideos(videoData.videos || []);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [router]);
 
   const handleLogout = async () => {
-    const tokenData = localStorage.getItem("tiktok_token");
-    if (tokenData) {
-      const { access_token } = JSON.parse(tokenData);
+    const token = getStoredToken();
+    if (token?.access_token) {
       await fetch("/api/auth/logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ access_token }),
+        body: JSON.stringify({ access_token: token.access_token }),
       });
     }
-    localStorage.removeItem("tiktok_token");
+    clearToken();
     router.push("/");
   };
 

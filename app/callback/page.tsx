@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
+import { saveToken } from "../lib/tiktokToken";
 
 function CallbackHandler() {
   const router = useRouter();
@@ -39,7 +40,7 @@ function CallbackHandler() {
           setTimeout(() => router.push("/"), 3000);
         } else {
           setStatus("ログイン成功！ダッシュボードに移動します...");
-          localStorage.setItem("tiktok_token", JSON.stringify(data));
+          saveToken(data);
           setTimeout(() => router.push("/dashboard"), 1000);
         }
       })

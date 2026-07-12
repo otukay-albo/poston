@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Header from "../components/Header";
+import { getValidAccessToken, clearToken } from "../lib/tiktokToken";
 
 const 公開設定ラベル: Record<string, string> = {
   PUBLIC_TO_EVERYONE: "全員に公開",
@@ -39,19 +40,19 @@ export default function 投稿ページ() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const tokenData = localStorage.getItem("tiktok_token");
-    if (!tokenData) {
-      set読込中(false);
-      return;
-    }
-    const { access_token } = JSON.parse(tokenData);
-    fetch("/api/creator-info", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ access_token }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
+    (async () => {
+      const token = await getValidAccessToken();
+      if (!token) {
+        set再ログイン必要(true);
+        set読込中(false);
+        return;
+      }
+      try {
+        const d = await fetch("/api/creator-info", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ access_token: token.access_token }),
+        }).then((r) => r.json());
         if (d.error) {
           // 投稿権限（video.publish）が無い旧トークン → 再ログインが必要
           set再ログイン必要(true);
@@ -65,13 +66,16 @@ export default function 投稿ページ() {
         setコメント不可(!!d.comment_disabled);
         setデュエット不可(!!d.duet_disabled);
         setスティッチ不可(!!d.stitch_disabled);
-      })
-      .catch(() => set再ログイン必要(true))
-      .finally(() => set読込中(false));
+      } catch {
+        set再ログイン必要(true);
+      } finally {
+        set読込中(false);
+      }
+    })();
   }, []);
 
   const 再ログイン = () => {
-    localStorage.removeItem("tiktok_token");
+    clearToken();
     window.location.href = "/";
   };
 
@@ -98,14 +102,14 @@ export default function 投稿ページ() {
     set投稿中(true);
     setエラー("");
 
-    const tokenData = localStorage.getItem("tiktok_token");
-    if (!tokenData) {
+    const token = await getValidAccessToken();
+    if (!token) {
       setエラー("ログインが必要です");
       set投稿中(false);
       return;
     }
 
-    const { access_token } = JSON.parse(tokenData);
+    const access_token = token.access_token;
 
     try {
       // ステップ1: TikTokにアップロード先URLを発行してもらう
