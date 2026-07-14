@@ -5,8 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import AppShell from "../components/AppShell";
-
-const ACCOUNTS = ["全アカウント", "yuki_beauty", "otayui", "account1", "account2", "account3"];
+import AnalyticsAccountBar from "../components/AnalyticsAccountBar";
 
 interface Row {
   account_name: string;
@@ -21,22 +20,22 @@ interface Row {
 }
 
 export default function AnalysisPage() {
-  const [account, setAccount] = useState(ACCOUNTS[0]);
+  const [analyticsName, setAnalyticsName] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"hashtag" | "hour">("hashtag");
 
   useEffect(() => {
+    if (!analyticsName) { setRows([]); return; }
     setLoading(true);
     setError("");
-    const url = account === "全アカウント" ? "/api/analysis" : `/api/analysis?account=${account}`;
-    fetch(url)
+    fetch(`/api/analysis?account=${encodeURIComponent(analyticsName)}`)
       .then((r) => r.json())
       .then((d) => setRows(d.rows || []))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [account]);
+  }, [analyticsName]);
 
   const latest = useMemo(() => {
     const map = new Map<string, Row>();
@@ -81,14 +80,8 @@ export default function AnalysisPage() {
   return (
     <AppShell current="analysis" title="傾向分析">
       <div className="flex-1 px-6 md:px-10 py-8 max-w-6xl mx-auto w-full">
+        <AnalyticsAccountBar onResolve={setAnalyticsName} />
         <div className="flex flex-wrap gap-4 mb-8">
-          <select
-            value={account}
-            onChange={(e) => setAccount(e.target.value)}
-            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 text-sm"
-          >
-            {ACCOUNTS.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
           <div className="flex gap-2">
             {(["hashtag", "hour"] as const).map((t) => (
               <button
@@ -118,7 +111,7 @@ export default function AnalysisPage() {
           </div>
         )}
 
-        {!loading && !error && tab === "hashtag" && (
+        {!loading && !error && analyticsName && tab === "hashtag" && (
           <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-6">
             <h2 className="font-bold text-lg mb-2">ハッシュタグ別 平均再生数 TOP15</h2>
             <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">使用されているハッシュタグごとの平均再生数</p>
@@ -159,7 +152,7 @@ export default function AnalysisPage() {
           </div>
         )}
 
-        {!loading && !error && tab === "hour" && (
+        {!loading && !error && analyticsName && tab === "hour" && (
           <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-6">
             <h2 className="font-bold text-lg mb-2">投稿時間帯別 平均再生数</h2>
             <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">どの時間帯に投稿すると再生数が伸びやすいか</p>

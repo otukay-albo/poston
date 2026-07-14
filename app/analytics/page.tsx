@@ -5,9 +5,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import AppShell from "../components/AppShell";
+import AnalyticsAccountBar from "../components/AnalyticsAccountBar";
 
-const ACCOUNTS = ["全アカウント", "yuki_beauty", "otayui", "account1", "account2", "account3"];
-const REAL_ACCOUNTS = ["yuki_beauty", "otayui", "account1", "account2", "account3"];
 const METRICS = [
   { key: "再生数", label: "再生数" },
   { key: "いいね数", label: "いいね" },
@@ -30,7 +29,7 @@ interface Row {
 }
 
 export default function AnalyticsPage() {
-  const [account, setAccount] = useState(ACCOUNTS[0]);
+  const [analyticsName, setAnalyticsName] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -43,22 +42,16 @@ export default function AnalyticsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!analyticsName) { setRows([]); return; }
     setLoading(true);
     setError("");
     setRows([]);
-    const targets = account === "全アカウント" ? REAL_ACCOUNTS : [account];
-    Promise.all(
-      targets.map((a) =>
-        fetch(`/api/analytics?account=${a}`)
-          .then((r) => r.json())
-          .then((data) => (data.error ? [] : data.rows || []))
-          .catch(() => [])
-      )
-    )
-      .then((results) => setRows(results.flat()))
+    fetch(`/api/analytics?account=${encodeURIComponent(analyticsName)}`)
+      .then((r) => r.json())
+      .then((data) => setRows(data.error ? [] : data.rows || []))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [account]);
+  }, [analyticsName]);
 
   const filtered = useMemo(() => {
     const from = new Date(dateFrom.replace(/\//g, "-") + "T00:00:00");
@@ -144,7 +137,7 @@ export default function AnalyticsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `poston_${account}_${dateFrom}_${dateTo}.csv`;
+    a.download = `poston_${analyticsName ?? "account"}_${dateFrom}_${dateTo}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -152,14 +145,8 @@ export default function AnalyticsPage() {
   return (
     <AppShell current="analytics" title="アナリティクス">
       <div className="flex-1 px-6 md:px-10 py-8 max-w-6xl mx-auto w-full">
+        <AnalyticsAccountBar onResolve={setAnalyticsName} />
         <div className="flex flex-wrap gap-4 mb-8">
-          <select
-            value={account}
-            onChange={(e) => setAccount(e.target.value)}
-            className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2 text-sm"
-          >
-            {ACCOUNTS.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
           <div className="flex items-center gap-2 text-sm">
             <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
               className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2" />
@@ -181,7 +168,7 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {!loading && !error && (
+        {!loading && !error && analyticsName && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {[

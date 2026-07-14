@@ -16,6 +16,7 @@ export interface StoredToken {
   expires_at?: number; // アクセストークンの失効時刻（ミリ秒）
   display_name?: string; // アカウント切替の表示用
   avatar_url?: string; // アカウント切替の表示用
+  analytics_name?: string; // 分析データ(Supabase)のアカウント名。TikTok名と異なるため個別に紐づける
 }
 
 function readAccounts(): StoredToken[] {
@@ -108,6 +109,15 @@ export function setAccountProfile(open_id: string, display_name?: string, avatar
     localStorage.setItem(ACTIVE_KEY, JSON.stringify(merge(active)));
   }
   writeAccounts(readAccounts().map((a) => (a.open_id === open_id ? merge(a) : a)));
+}
+
+// アカウントに「分析データ名」を紐づける（分析ページで使用）
+export function setAccountAnalyticsName(open_id: string, analytics_name: string): void {
+  const active = getStoredToken();
+  if (active && active.open_id === open_id) {
+    localStorage.setItem(ACTIVE_KEY, JSON.stringify({ ...active, analytics_name }));
+  }
+  writeAccounts(readAccounts().map((a) => (a.open_id === open_id ? { ...a, analytics_name } : a)));
 }
 
 // 全アカウントを削除（完全ログアウト）
