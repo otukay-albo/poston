@@ -41,7 +41,10 @@ export default function Home() {
       `&redirect_uri=${encodeURIComponent(redirectUri || "")}` +
       `&state=login` +
       `&code_challenge=${codeChallenge}` +
-      `&code_challenge_method=S256`;
+      `&code_challenge_method=S256` +
+      // 自動認証を無効化し、必ず認証画面（QR・アカウント切替）を表示させる
+      // → 別アカウントを追加できるようにするため
+      `&disable_auto_auth=1`;
 
     window.location.href = authUrl;
   };
