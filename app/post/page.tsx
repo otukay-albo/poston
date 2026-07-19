@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import AppShell from "../components/AppShell";
 import LaClock from "../components/LaClock";
+import ScheduleCalendar from "../components/ScheduleCalendar";
 import { getValidAccessToken, clearToken, setAccountProfile } from "../lib/tiktokToken";
 import { listSchedule, addSchedule, type ScheduledPost } from "../lib/schedule";
 import { laDefaultDateTime } from "../lib/latime";
@@ -45,7 +46,14 @@ export default function 投稿ページ() {
   const [予約日付, set予約日付] = useState("");
   const [予約時刻, set予約時刻] = useState("");
   const [予約一覧, set予約一覧] = useState<ScheduledPost[]>([]);
+  const [タブ, setタブ] = useState<"post" | "calendar">("post");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // URLの ?tab=calendar で予約カレンダータブを直接開けるようにする
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("tab") === "calendar") setタブ("calendar");
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -219,7 +227,29 @@ export default function 投稿ページ() {
 
   return (
     <AppShell current="post" title="投稿">
-      <div className="flex-1 max-w-xl mx-auto w-full px-6 py-10">
+      {/* タブ：投稿 / 予約カレンダー */}
+      <div className="max-w-6xl mx-auto w-full px-6 md:px-10 pt-4">
+        <div className="inline-flex bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-full p-0.5">
+          {([["post", "投稿"], ["calendar", "予約カレンダー"]] as const).map(([v, l]) => (
+            <button
+              key={v}
+              onClick={() => setタブ(v)}
+              className={`px-4 py-1.5 rounded-full text-sm transition ${
+                タブ === v
+                  ? "bg-black dark:bg-white text-white dark:text-black font-bold"
+                  : "text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white"
+              }`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {タブ === "calendar" && <ScheduleCalendar />}
+
+      {タブ === "post" && (
+      <div className="flex-1 max-w-xl mx-auto w-full px-6 py-6">
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center gap-2">
@@ -433,9 +463,9 @@ export default function 投稿ページ() {
             <div className="pt-6 border-t border-gray-200 dark:border-gray-800">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold">📅 今後の予約</h2>
-                <a href="/calendar" className="text-xs text-gray-500 dark:text-gray-400 underline hover:text-black dark:hover:text-white">
+                <button onClick={() => setタブ("calendar")} className="text-xs text-gray-500 dark:text-gray-400 underline hover:text-black dark:hover:text-white">
                   カレンダーで見る →
-                </a>
+                </button>
               </div>
               {今後の予約.length === 0 ? (
                 <p className="text-xs text-gray-400 dark:text-gray-600">予約はありません</p>
@@ -518,12 +548,21 @@ export default function 投稿ページ() {
                 : "TikTokに動画を投稿しました"}
             </p>
             <div className="flex gap-3 justify-center">
-              <a
-                href={投稿タイミング === "schedule" ? "/calendar" : "/dashboard"}
-                className="border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full px-6 py-3 text-sm hover:border-black dark:hover:border-white transition"
-              >
-                {投稿タイミング === "schedule" ? "カレンダーを見る" : "ダッシュボードへ"}
-              </a>
+              {投稿タイミング === "schedule" ? (
+                <button
+                  onClick={() => setタブ("calendar")}
+                  className="border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full px-6 py-3 text-sm hover:border-black dark:hover:border-white transition"
+                >
+                  カレンダーを見る
+                </button>
+              ) : (
+                <a
+                  href="/dashboard"
+                  className="border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full px-6 py-3 text-sm hover:border-black dark:hover:border-white transition"
+                >
+                  ダッシュボードへ
+                </a>
+              )}
               <button
                 onClick={リセット}
                 className="bg-black dark:bg-white text-white dark:text-black rounded-full px-6 py-3 text-sm font-bold hover:opacity-80 transition"
@@ -534,6 +573,7 @@ export default function 投稿ページ() {
           </div>
         )}
       </div>
+      )}
 
       <footer className="border-t border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-600 text-sm text-center py-6">
         © 2026 Poston

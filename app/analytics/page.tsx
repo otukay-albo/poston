@@ -6,6 +6,7 @@ import {
 } from "recharts";
 import AppShell from "../components/AppShell";
 import AnalyticsAccountBar from "../components/AnalyticsAccountBar";
+import TrendAnalysis from "../components/TrendAnalysis";
 
 const METRICS = [
   { key: "再生数", label: "再生数" },
@@ -36,19 +37,28 @@ export default function AnalyticsPage() {
     return d.toISOString().split("T")[0];
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
-  const [期間プリセット, set期間プリセット] = useState("30日間");
+  const [期間プリセット, set期間プリセット] = useState("30日");
   const [metricIdx, setMetricIdx] = useState(0);
+  const [メインタブ, setメインタブ] = useState<"overview" | "trend">("overview");
+
+  // URLの ?tab=trend で傾向分析タブを直接開けるようにする
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("tab") === "trend") setメインタブ("trend");
+  }, []);
 
   // 期間プリセット（押すと日付範囲を自動設定 → 数値・グラフが再計算される）
+  // 「カスタム」を選んだときだけ日付カレンダーを表示する
   const applyPreset = (label: string) => {
     set期間プリセット(label);
+    if (label === "カスタム") return; // 現在の日付範囲を保持したまま手動選択へ
     const toStr = new Date().toISOString().split("T")[0];
     if (label === "全期間") {
       setDateFrom("2020-01-01");
       setDateTo(toStr);
       return;
     }
-    const days = ({ "1日間": 1, "3日間": 3, "7日間": 7, "30日間": 30 } as Record<string, number>)[label] ?? 30;
+    const days = ({ "1日": 1, "3日": 3, "7日": 7, "30日": 30 } as Record<string, number>)[label] ?? 30;
     const from = new Date();
     from.setDate(from.getDate() - (days - 1));
     setDateFrom(from.toISOString().split("T")[0]);
@@ -169,46 +179,70 @@ export default function AnalyticsPage() {
   return (
     <AppShell current="analytics" title="アナリティクス">
       <div className="flex-1 px-6 md:px-10 py-8 max-w-6xl mx-auto w-full">
-        <div className="flex flex-wrap items-center gap-3 mb-5">
+        <div className="flex flex-wrap items-center gap-3 mb-4">
           <AnalyticsAccountBar onResolve={setAnalyticsNames} />
           <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-800"></span>
-          <div className="flex gap-1.5 flex-wrap">
-            {["1日間", "3日間", "7日間", "30日間", "全期間"].map((p) => (
+          <div className="inline-flex bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-full p-0.5">
+            {([["overview", "概要"], ["trend", "傾向分析"]] as const).map(([v, l]) => (
               <button
-                key={p}
-                onClick={() => applyPreset(p)}
-                className={`px-3.5 py-1.5 rounded-full text-xs transition ${
-                  期間プリセット === p
+                key={v}
+                onClick={() => setメインタブ(v)}
+                className={`px-4 py-1.5 rounded-full text-sm transition ${
+                  メインタブ === v
                     ? "bg-black dark:bg-white text-white dark:text-black font-bold"
-                    : "bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:text-black dark:hover:text-white"
+                    : "text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white"
                 }`}
               >
-                {p}
+                {l}
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 text-sm">
-            <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); set期間プリセット(""); }}
-              className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5" />
-            <span className="text-gray-400">〜</span>
-            <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); set期間プリセット(""); }}
-              className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5" />
-          </div>
         </div>
 
-        {loading && (
+        {メインタブ === "overview" && (
+          <div className="flex flex-wrap items-center gap-3 mb-5">
+            <div className="flex gap-1.5 flex-wrap">
+              {["1日", "3日", "7日", "30日", "全期間", "カスタム"].map((p) => (
+                <button
+                  key={p}
+                  onClick={() => applyPreset(p)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs transition ${
+                    期間プリセット === p
+                      ? "bg-black dark:bg-white text-white dark:text-black font-bold"
+                      : "bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:text-black dark:hover:text-white"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+            {期間プリセット === "カスタム" && (
+              <div className="flex items-center gap-2 text-sm">
+                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+                  className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5" />
+                <span className="text-gray-400">〜</span>
+                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+                  className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {メインタブ === "trend" && <TrendAnalysis analyticsNames={analyticsNames} />}
+
+        {メインタブ === "overview" && loading && (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-black dark:border-white border-t-transparent rounded-full animate-spin"></div>
           </div>
         )}
 
-        {error && (
+        {メインタブ === "overview" && error && (
           <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl p-4 mb-6 text-red-600 dark:text-red-400">
             エラー: {error}
           </div>
         )}
 
-        {!loading && !error && analyticsNames && analyticsNames.length > 0 && (
+        {メインタブ === "overview" && !loading && !error && analyticsNames && analyticsNames.length > 0 && (
           <>
             {/* 左：数値サマリー ／ 右：グラフ のコンパクト2カラム */}
             <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-4 mb-8 items-stretch">

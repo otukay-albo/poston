@@ -5,13 +5,12 @@ import { listAccounts, getStoredToken, switchAccount, removeAccount, type Stored
 
 export type Page = "dashboard" | "analytics" | "analysis" | "post" | "calendar" | "import" | "help" | "home";
 
+// 予約カレンダーは「投稿」内タブ、傾向分析は「アナリティクス」内タブに統合。
+// データ取り込み(/import)はテスト保留中のためナビ非表示（URL直打ちで利用可）。
 const NAV: { page: Page; href: string; label: string; icon: string }[] = [
   { page: "dashboard", href: "/dashboard", label: "ダッシュボード", icon: "M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5" },
   { page: "post", href: "/post", label: "投稿", icon: "M12 5v14M5 12h14" },
-  { page: "calendar", href: "/calendar", label: "予約カレンダー", icon: "M4 5h16v15H4z M4 9h16 M8 3v4 M16 3v4" },
   { page: "analytics", href: "/analytics", label: "アナリティクス", icon: "M4 20V4M4 20h16M7.5 12v5M13.5 8v9" },
-  { page: "analysis", href: "/analysis", label: "傾向分析", icon: "M4 17l5-5 3 3 7-8M4 7v13h16" },
-  { page: "import", href: "/import", label: "データ取り込み", icon: "M12 16V4M6 10l6-6 6 6M4 20h16" },
   { page: "help", href: "/help", label: "ヘルプ / 使い方", icon: "M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1 .9-1 1.7M12 17h.01" },
 ];
 
@@ -46,7 +45,7 @@ export default function Sidebar({ current }: { current?: Page }) {
   };
 
   return (
-    <aside className="w-60 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-black flex flex-col gap-6 p-4 sticky top-0 h-screen overflow-y-auto">
+    <aside className="w-48 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-black flex flex-col gap-5 p-3 sticky top-0 h-screen overflow-y-auto">
       {/* ロゴ */}
       <a href="/dashboard" className="flex items-center gap-3 px-2 pt-1">
         <div className="w-9 h-9 bg-black dark:bg-white rounded-xl flex items-center justify-center">
