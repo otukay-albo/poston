@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import AppShell from "../components/AppShell";
 import LaClock from "../components/LaClock";
 import { getValidAccessToken, clearToken, setAccountProfile } from "../lib/tiktokToken";
+import { listSchedule, addSchedule, type ScheduledPost } from "../lib/schedule";
+import { laDefaultDateTime } from "../lib/latime";
 
 const 公開設定ラベル: Record<string, string> = {
   PUBLIC_TO_EVERYONE: "全員に公開",
@@ -38,6 +40,11 @@ export default function 投稿ページ() {
   const [スティッチ不可, setスティッチ不可] = useState(false);
   const [再ログイン必要, set再ログイン必要] = useState(false);
   const [読込中, set読込中] = useState(true);
+  const [アカウントID, setアカウントID] = useState("");
+  const [投稿タイミング, set投稿タイミング] = useState<"now" | "schedule">("now");
+  const [予約日付, set予約日付] = useState("");
+  const [予約時刻, set予約時刻] = useState("");
+  const [予約一覧, set予約一覧] = useState<ScheduledPost[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -48,6 +55,11 @@ export default function 投稿ページ() {
         set読込中(false);
         return;
       }
+      setアカウントID(token.open_id);
+      set予約一覧(listSchedule());
+      const def = laDefaultDateTime();
+      set予約日付(def.date);
+      set予約時刻(def.time);
       try {
         const d = await fetch("/api/creator-info", {
           method: "POST",
@@ -102,6 +114,23 @@ export default function 投稿ページ() {
 
   const 投稿実行 = async () => {
     if (!動画ファイル) return;
+
+    // 「予約する」の場合はTikTokへ送信せず、予約カレンダーに登録する
+    // （自動投稿はTikTok審査の承認後に有効化）
+    if (投稿タイミング === "schedule") {
+      addSchedule({
+        open_id: アカウントID,
+        account_name: アカウント名,
+        date: 予約日付,
+        time: 予約時刻,
+        title: タイトル,
+        status: "予約",
+      });
+      set予約一覧(listSchedule());
+      setステップ("完了");
+      return;
+    }
+
     set投稿中(true);
     setエラー("");
 
@@ -169,7 +198,23 @@ export default function 投稿ページ() {
     setタイトル("");
     set公開設定("");
     setエラー("");
+    set投稿タイミング("now");
+    const def = laDefaultDateTime();
+    set予約日付(def.date);
+    set予約時刻(def.time);
     if (fileRef.current) fileRef.current.value = "";
+  };
+
+  // 下部ミニリスト用：LA時刻基準で「これから」の予約を直近5件
+  const laNow = laDefaultDateTime();
+  const 今後の予約 = 予約一覧
+    .filter((s) => s.status !== "投稿済み" && `${s.date} ${s.time}` >= `${laNow.date} ${laNow.time}`)
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+    .slice(0, 5);
+  const 予約日表示 = (d: string) => {
+    const [y, m, day] = d.split("-").map(Number);
+    const wd = ["日", "月", "火", "水", "木", "金", "土"][new Date(y, m - 1, day).getDay()];
+    return `${m}/${day}(${wd})`;
   };
 
   return (
@@ -314,13 +359,63 @@ export default function 投稿ページ() {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm text-gray-500 dark:text-gray-400 mb-2">投稿タイミング</label>
+              <div className="flex gap-2">
+                {([
+                  { v: "now", l: "今すぐ投稿" },
+                  { v: "schedule", l: "予約する" },
+                ] as const).map((o) => (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => set投稿タイミング(o.v)}
+                    className={`flex-1 rounded-lg border px-4 py-2.5 text-sm transition ${
+                      投稿タイミング === o.v
+                        ? "border-black dark:border-white bg-black dark:bg-white text-white dark:text-black font-bold"
+                        : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400"
+                    }`}
+                  >
+                    {o.l}
+                  </button>
+                ))}
+              </div>
+              {投稿タイミング === "schedule" && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">日付（LA）</label>
+                      <input
+                        type="date"
+                        value={予約日付}
+                        onChange={(e) => set予約日付(e.target.value)}
+                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="w-36">
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">時刻（LA）</label>
+                      <input
+                        type="time"
+                        value={予約時刻}
+                        onChange={(e) => set予約時刻(e.target.value)}
+                        className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 dark:text-gray-600 leading-relaxed">
+                    ※ 自動投稿はTikTok審査中のため、現在は予約カレンダーへの登録のみ行われます（動画ファイルは保存されません）。審査承認後に自動投稿が有効になります。
+                  </p>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-3 pt-2">
               <a href="/dashboard" className="flex-1 text-center border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full py-3 text-sm hover:border-black dark:hover:border-white hover:text-black dark:hover:text-white transition">
                 キャンセル
               </a>
               <button
                 onClick={() => setステップ("確認")}
-                disabled={!動画ファイル || !公開設定}
+                disabled={!動画ファイル || !公開設定 || (投稿タイミング === "schedule" && (!予約日付 || !予約時刻))}
                 className="flex-1 bg-black dark:bg-white text-white dark:text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:opacity-80 transition"
               >
                 内容を確認する
@@ -334,6 +429,28 @@ export default function 投稿ページ() {
               <a href="https://www.tiktok.com/legal/privacy-policy" target="_blank" rel="noreferrer" className="underline hover:text-gray-600 dark:hover:text-gray-400">プライバシーポリシー</a>
               に同意したものとみなされます。
             </p>
+
+            <div className="pt-6 border-t border-gray-200 dark:border-gray-800">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold">📅 今後の予約</h2>
+                <a href="/calendar" className="text-xs text-gray-500 dark:text-gray-400 underline hover:text-black dark:hover:text-white">
+                  カレンダーで見る →
+                </a>
+              </div>
+              {今後の予約.length === 0 ? (
+                <p className="text-xs text-gray-400 dark:text-gray-600">予約はありません</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {今後の予約.map((s) => (
+                    <div key={s.id} className="flex items-center gap-3 text-sm bg-gray-50 dark:bg-gray-900 rounded-lg px-3 py-2">
+                      <span className="tabular-nums text-gray-600 dark:text-gray-300 shrink-0">{予約日表示(s.date)} {s.time}</span>
+                      <span className="text-gray-500 dark:text-gray-400 shrink-0 max-w-[7rem] truncate">{s.account_name || ""}</span>
+                      <span className="truncate text-gray-600 dark:text-gray-300">{s.title || "（無題）"}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -347,6 +464,7 @@ export default function 投稿ページ() {
 
             <div className="bg-gray-50 dark:bg-gray-900 rounded-xl divide-y divide-gray-200 dark:divide-gray-800 text-sm">
               {[
+                { label: "投稿タイミング", value: 投稿タイミング === "now" ? "今すぐ投稿" : `予約 ${予約日付} ${予約時刻}（LA）` },
                 { label: "タイトル", value: タイトル || "（未入力）" },
                 { label: "公開設定", value: 公開設定ラベル[公開設定] || 公開設定 },
                 { label: "デュエット", value: デュエット無効 ? "無効" : "有効" },
@@ -384,7 +502,7 @@ export default function 投稿ページ() {
                 disabled={投稿中}
                 className="flex-1 bg-black dark:bg-white text-white dark:text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:opacity-80 transition"
               >
-                {投稿中 ? "投稿中..." : "TikTokに投稿する"}
+                {投稿中 ? "投稿中..." : 投稿タイミング === "schedule" ? "予約を保存する" : "TikTokに投稿する"}
               </button>
             </div>
           </div>
@@ -392,12 +510,19 @@ export default function 投稿ページ() {
 
         {ステップ === "完了" && (
           <div className="text-center py-20">
-            <p className="text-5xl mb-4">✅</p>
-            <h2 className="text-2xl font-bold mb-2">投稿が完了しました</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-8">TikTokに動画を投稿しました</p>
+            <p className="text-5xl mb-4">{投稿タイミング === "schedule" ? "📅" : "✅"}</p>
+            <h2 className="text-2xl font-bold mb-2">{投稿タイミング === "schedule" ? "予約を保存しました" : "投稿が完了しました"}</h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-8">
+              {投稿タイミング === "schedule"
+                ? `${予約日付} ${予約時刻}（LA）で予約カレンダーに登録しました`
+                : "TikTokに動画を投稿しました"}
+            </p>
             <div className="flex gap-3 justify-center">
-              <a href="/dashboard" className="border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full px-6 py-3 text-sm hover:border-black dark:hover:border-white transition">
-                ダッシュボードへ
+              <a
+                href={投稿タイミング === "schedule" ? "/calendar" : "/dashboard"}
+                className="border border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-full px-6 py-3 text-sm hover:border-black dark:hover:border-white transition"
+              >
+                {投稿タイミング === "schedule" ? "カレンダーを見る" : "ダッシュボードへ"}
               </a>
               <button
                 onClick={リセット}
