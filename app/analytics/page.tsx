@@ -36,7 +36,24 @@ export default function AnalyticsPage() {
     return d.toISOString().split("T")[0];
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
+  const [期間プリセット, set期間プリセット] = useState("30日間");
   const [metricIdx, setMetricIdx] = useState(0);
+
+  // 期間プリセット（押すと日付範囲を自動設定 → 数値・グラフが再計算される）
+  const applyPreset = (label: string) => {
+    set期間プリセット(label);
+    const toStr = new Date().toISOString().split("T")[0];
+    if (label === "全期間") {
+      setDateFrom("2020-01-01");
+      setDateTo(toStr);
+      return;
+    }
+    const days = ({ "1日間": 1, "3日間": 3, "7日間": 7, "30日間": 30 } as Record<string, number>)[label] ?? 30;
+    const from = new Date();
+    from.setDate(from.getDate() - (days - 1));
+    setDateFrom(from.toISOString().split("T")[0]);
+    setDateTo(toStr);
+  };
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -153,13 +170,28 @@ export default function AnalyticsPage() {
     <AppShell current="analytics" title="アナリティクス">
       <div className="flex-1 px-6 md:px-10 py-8 max-w-6xl mx-auto w-full">
         <AnalyticsAccountBar onResolve={setAnalyticsNames} />
-        <div className="flex flex-wrap gap-4 mb-8">
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <div className="flex gap-1.5 flex-wrap">
+            {["1日間", "3日間", "7日間", "30日間", "全期間"].map((p) => (
+              <button
+                key={p}
+                onClick={() => applyPreset(p)}
+                className={`px-3.5 py-1.5 rounded-full text-xs transition ${
+                  期間プリセット === p
+                    ? "bg-black dark:bg-white text-white dark:text-black font-bold"
+                    : "bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:text-black dark:hover:text-white"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center gap-2 text-sm">
-            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-              className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2" />
+            <input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); set期間プリセット(""); }}
+              className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5" />
             <span className="text-gray-400">〜</span>
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-              className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2" />
+            <input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); set期間プリセット(""); }}
+              className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5" />
           </div>
         </div>
 
@@ -177,49 +209,54 @@ export default function AnalyticsPage() {
 
         {!loading && !error && analyticsNames && analyticsNames.length > 0 && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              {[
-                { label: "合計再生数", value: summary.totalViews.toLocaleString("ja-JP"), sub: null },
-                { label: "合計いいね", value: summary.totalLikes.toLocaleString("ja-JP"), sub: `いいね率 ${summary.likeRate.toFixed(2)}%` },
-                { label: "合計コメント", value: summary.totalComments.toLocaleString("ja-JP"), sub: null },
-                { label: "合計共有", value: summary.totalShares.toLocaleString("ja-JP"), sub: `共有率 ${summary.shareRate.toFixed(2)}%` },
-                { label: "平均エンゲージ率", value: `${summary.avgEng.toFixed(2)}%`, sub: null },
-              ].map((card) => (
-                <div key={card.label} className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5">
-                  <p className="text-gray-500 dark:text-gray-400 text-xs mb-2">{card.label}</p>
-                  <p className="text-2xl font-bold">{card.value}</p>
-                  {card.sub && <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{card.sub}</p>}
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-6 mb-8">
-              <div className="flex gap-2 mb-6 flex-wrap">
-                {METRICS.map((m, i) => (
-                  <button
-                    key={m.key}
-                    onClick={() => setMetricIdx(i)}
-                    className={`px-4 py-1.5 rounded-full text-sm transition ${
-                      metricIdx === i
-                        ? "bg-black dark:bg-white text-white dark:text-black font-bold"
-                        : "bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white"
-                    }`}
-                  >
-                    {m.label}
-                  </button>
+            {/* 左：数値サマリー ／ 右：グラフ のコンパクト2カラム */}
+            <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-4 mb-8 items-stretch">
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-xl px-4 py-3 flex flex-col justify-center divide-y divide-gray-200/70 dark:divide-gray-800/70">
+                {[
+                  { label: "合計再生数", value: summary.totalViews.toLocaleString("ja-JP"), sub: null },
+                  { label: "合計いいね", value: summary.totalLikes.toLocaleString("ja-JP"), sub: `いいね率 ${summary.likeRate.toFixed(2)}%` },
+                  { label: "合計コメント", value: summary.totalComments.toLocaleString("ja-JP"), sub: null },
+                  { label: "合計共有", value: summary.totalShares.toLocaleString("ja-JP"), sub: `共有率 ${summary.shareRate.toFixed(2)}%` },
+                  { label: "平均エンゲージ率", value: `${summary.avgEng.toFixed(2)}%`, sub: null },
+                ].map((card) => (
+                  <div key={card.label} className="flex items-center justify-between gap-3 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{card.label}</p>
+                      {card.sub && <p className="text-[10px] text-gray-400 dark:text-gray-600">{card.sub}</p>}
+                    </div>
+                    <p className="text-lg font-bold tabular-nums shrink-0">{card.value}</p>
+                  </div>
                 ))}
               </div>
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ccc" className="dark:[stroke:#333]" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => isEngRate ? `${v.toFixed(1)}%` : v.toLocaleString("ja-JP")} />
-                  <Tooltip
-                    formatter={(v) => [isEngRate ? `${Number(v).toFixed(2)}%` : Number(v).toLocaleString("ja-JP"), METRICS[metricIdx].label]}
-                  />
-                  <Line type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                </LineChart>
-              </ResponsiveContainer>
+
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 min-w-0">
+                <div className="flex gap-1.5 mb-3 flex-wrap">
+                  {METRICS.map((m, i) => (
+                    <button
+                      key={m.key}
+                      onClick={() => setMetricIdx(i)}
+                      className={`px-3 py-1 rounded-full text-xs transition ${
+                        metricIdx === i
+                          ? "bg-black dark:bg-white text-white dark:text-black font-bold"
+                          : "bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-black dark:hover:text-white"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+                <ResponsiveContainer width="100%" height={230}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ccc" className="dark:[stroke:#333]" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => isEngRate ? `${v.toFixed(1)}%` : v.toLocaleString("ja-JP")} />
+                    <Tooltip
+                      formatter={(v) => [isEngRate ? `${Number(v).toFixed(2)}%` : Number(v).toLocaleString("ja-JP"), METRICS[metricIdx].label]}
+                    />
+                    <Line type="monotone" dataKey="value" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
             <div className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden">
