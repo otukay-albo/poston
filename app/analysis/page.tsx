@@ -87,8 +87,9 @@ export default function AnalysisPage() {
   return (
     <AppShell current="analysis" title="傾向分析">
       <div className="flex-1 px-6 md:px-10 py-8 max-w-6xl mx-auto w-full">
-        <AnalyticsAccountBar onResolve={setAnalyticsNames} />
-        <div className="flex flex-wrap gap-4 mb-8">
+        <div className="flex flex-wrap items-center gap-3 mb-6">
+          <AnalyticsAccountBar onResolve={setAnalyticsNames} />
+          <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-800"></span>
           <div className="flex gap-2">
             {(["hashtag", "hour"] as const).map((t) => (
               <button

@@ -169,8 +169,9 @@ export default function AnalyticsPage() {
   return (
     <AppShell current="analytics" title="アナリティクス">
       <div className="flex-1 px-6 md:px-10 py-8 max-w-6xl mx-auto w-full">
-        <AnalyticsAccountBar onResolve={setAnalyticsNames} />
-        <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex flex-wrap items-center gap-3 mb-5">
+          <AnalyticsAccountBar onResolve={setAnalyticsNames} />
+          <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-800"></span>
           <div className="flex gap-1.5 flex-wrap">
             {["1日間", "3日間", "7日間", "30日間", "全期間"].map((p) => (
               <button
