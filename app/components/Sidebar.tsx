@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { listAccounts, getStoredToken, switchAccount, removeAccount, type StoredToken } from "../lib/tiktokToken";
 
-export type Page = "dashboard" | "analytics" | "analysis" | "post" | "home";
+export type Page = "dashboard" | "analytics" | "analysis" | "post" | "calendar" | "home";
 
 const NAV: { page: Page; href: string; label: string; icon: string }[] = [
   { page: "dashboard", href: "/dashboard", label: "ダッシュボード", icon: "M3 10.5 12 3l9 7.5M5 9.5V20h14V9.5" },
+  { page: "post", href: "/post", label: "投稿", icon: "M12 5v14M5 12h14" },
+  { page: "calendar", href: "/calendar", label: "予約カレンダー", icon: "M4 5h16v15H4z M4 9h16 M8 3v4 M16 3v4" },
   { page: "analytics", href: "/analytics", label: "アナリティクス", icon: "M4 20V4M4 20h16M7.5 12v5M13.5 8v9" },
   { page: "analysis", href: "/analysis", label: "傾向分析", icon: "M4 17l5-5 3 3 7-8M4 7v13h16" },
-  { page: "post", href: "/post", label: "投稿", icon: "M12 5v14M5 12h14" },
 ];
 
 export default function Sidebar({ current }: { current?: Page }) {
