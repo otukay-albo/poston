@@ -19,7 +19,7 @@ export default function TermsPage() {
             <h2 className="text-xl font-bold text-white mb-3">1. Acceptance of Terms</h2>
             <p>
               These Terms of Service (&ldquo;Terms&rdquo;) govern your use of Poston (&ldquo;the Service&rdquo;),
-              operated by AL-BO (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;). By accessing or using
+              operated by 株式会社CrescenDo (&ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;). By accessing or using
               Poston and by connecting a TikTok account, you agree to these Terms. If you do not agree, do not
               use the Service.
             </p>
@@ -139,7 +139,9 @@ export default function TermsPage() {
           <section>
             <h2 className="text-xl font-bold text-white mb-3">13. Contact</h2>
             <p>
-              Poston (operated by AL-BO)<br />
+              Poston is operated by 株式会社CrescenDo (CrescenDo Inc.).<br />
+              Website:{" "}
+              <a href="https://cresc-buzz.com/" target="_blank" rel="noreferrer" className="text-white underline">https://cresc-buzz.com/</a><br />
               Email:{" "}
               <a href="mailto:otuka.y@al-bo.io" className="text-white underline">otuka.y@al-bo.io</a>
             </p>

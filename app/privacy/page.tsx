@@ -17,7 +17,7 @@ export default function PrivacyPage() {
         <div className="space-y-8 text-gray-300 leading-relaxed">
           <section>
             <p>
-              Poston (&ldquo;the Service&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;), operated by AL-BO,
+              Poston (&ldquo;the Service&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, &ldquo;our&rdquo;), operated by 株式会社CrescenDo,
               provides a dashboard that helps businesses analyze and manage multiple TikTok accounts and
               publish videos to TikTok. This Privacy Policy explains what information we collect through the
               Service, how we use, store, share, and protect it, and the choices you have. By using Poston and
@@ -176,7 +176,9 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-xl font-bold text-white mb-3">11. Contact</h2>
             <p>
-              Poston (operated by AL-BO)<br />
+              Poston is operated by 株式会社CrescenDo (CrescenDo Inc.).<br />
+              Website:{" "}
+              <a href="https://cresc-buzz.com/" target="_blank" rel="noreferrer" className="text-white underline">https://cresc-buzz.com/</a><br />
               Email:{" "}
               <a href="mailto:otuka.y@al-bo.io" className="text-white underline">otuka.y@al-bo.io</a>
             </p>
