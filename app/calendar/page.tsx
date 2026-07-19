@@ -152,8 +152,8 @@ export default function CalendarPage() {
             {mode === "list" && <div className="text-lg font-bold">予約リスト</div>}
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <LaClock />
+          <div className="flex items-center gap-4 flex-wrap">
+            <LaClock size="lg" />
             <div className="inline-flex bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-full p-0.5">
               {(["calendar", "list"] as const).map((m) => (
                 <button

@@ -29,7 +29,7 @@ interface Row {
 }
 
 export default function AnalyticsPage() {
-  const [analyticsName, setAnalyticsName] = useState<string | null>(null);
+  const [analyticsNames, setAnalyticsNames] = useState<string[] | null>(null);
   const [dateFrom, setDateFrom] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -42,16 +42,23 @@ export default function AnalyticsPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!analyticsName) { setRows([]); return; }
+    if (!analyticsNames || analyticsNames.length === 0) { setRows([]); return; }
     setLoading(true);
     setError("");
     setRows([]);
-    fetch(`/api/analytics?account=${encodeURIComponent(analyticsName)}`)
-      .then((r) => r.json())
-      .then((data) => setRows(data.error ? [] : data.rows || []))
+    // 複数アカウント（全アカウント合計）にも対応：並列取得してマージ
+    Promise.all(
+      analyticsNames.map((n) =>
+        fetch(`/api/analytics?account=${encodeURIComponent(n)}`)
+          .then((r) => r.json())
+          .then((data) => (data.error ? [] : data.rows || []))
+          .catch(() => [])
+      )
+    )
+      .then((results) => setRows(results.flat()))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [analyticsName]);
+  }, [analyticsNames]);
 
   const filtered = useMemo(() => {
     const from = new Date(dateFrom.replace(/\//g, "-") + "T00:00:00");
@@ -137,7 +144,7 @@ export default function AnalyticsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `poston_${analyticsName ?? "account"}_${dateFrom}_${dateTo}.csv`;
+    a.download = `poston_${analyticsNames && analyticsNames.length === 1 ? analyticsNames[0] : "all"}_${dateFrom}_${dateTo}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -145,7 +152,7 @@ export default function AnalyticsPage() {
   return (
     <AppShell current="analytics" title="アナリティクス">
       <div className="flex-1 px-6 md:px-10 py-8 max-w-6xl mx-auto w-full">
-        <AnalyticsAccountBar onResolve={setAnalyticsName} />
+        <AnalyticsAccountBar onResolve={setAnalyticsNames} />
         <div className="flex flex-wrap gap-4 mb-8">
           <div className="flex items-center gap-2 text-sm">
             <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
@@ -168,7 +175,7 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {!loading && !error && analyticsName && (
+        {!loading && !error && analyticsNames && analyticsNames.length > 0 && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {[

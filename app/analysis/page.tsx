@@ -20,22 +20,29 @@ interface Row {
 }
 
 export default function AnalysisPage() {
-  const [analyticsName, setAnalyticsName] = useState<string | null>(null);
+  const [analyticsNames, setAnalyticsNames] = useState<string[] | null>(null);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"hashtag" | "hour">("hashtag");
 
   useEffect(() => {
-    if (!analyticsName) { setRows([]); return; }
+    if (!analyticsNames || analyticsNames.length === 0) { setRows([]); return; }
     setLoading(true);
     setError("");
-    fetch(`/api/analysis?account=${encodeURIComponent(analyticsName)}`)
-      .then((r) => r.json())
-      .then((d) => setRows(d.rows || []))
+    // 複数アカウント（全アカウント合計）にも対応：並列取得してマージ
+    Promise.all(
+      analyticsNames.map((n) =>
+        fetch(`/api/analysis?account=${encodeURIComponent(n)}`)
+          .then((r) => r.json())
+          .then((d) => d.rows || [])
+          .catch(() => [])
+      )
+    )
+      .then((results) => setRows(results.flat()))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [analyticsName]);
+  }, [analyticsNames]);
 
   const latest = useMemo(() => {
     const map = new Map<string, Row>();
@@ -80,7 +87,7 @@ export default function AnalysisPage() {
   return (
     <AppShell current="analysis" title="傾向分析">
       <div className="flex-1 px-6 md:px-10 py-8 max-w-6xl mx-auto w-full">
-        <AnalyticsAccountBar onResolve={setAnalyticsName} />
+        <AnalyticsAccountBar onResolve={setAnalyticsNames} />
         <div className="flex flex-wrap gap-4 mb-8">
           <div className="flex gap-2">
             {(["hashtag", "hour"] as const).map((t) => (
@@ -111,7 +118,7 @@ export default function AnalysisPage() {
           </div>
         )}
 
-        {!loading && !error && analyticsName && tab === "hashtag" && (
+        {!loading && !error && analyticsNames && analyticsNames.length > 0 && tab === "hashtag" && (
           <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-6">
             <h2 className="font-bold text-lg mb-2">ハッシュタグ別 平均再生数 TOP15</h2>
             <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">使用されているハッシュタグごとの平均再生数</p>
@@ -152,7 +159,7 @@ export default function AnalysisPage() {
           </div>
         )}
 
-        {!loading && !error && analyticsName && tab === "hour" && (
+        {!loading && !error && analyticsNames && analyticsNames.length > 0 && tab === "hour" && (
           <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-6">
             <h2 className="font-bold text-lg mb-2">投稿時間帯別 平均再生数</h2>
             <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">どの時間帯に投稿すると再生数が伸びやすいか</p>

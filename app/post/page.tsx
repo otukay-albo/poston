@@ -183,7 +183,7 @@ export default function 投稿ページ() {
               </svg>
               <span className="font-bold text-lg">TikTokに投稿</span>
             </div>
-            <LaClock className="mt-1" />
+            <LaClock size="lg" className="mt-2" />
           </div>
           {アカウント名 && (
             <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
