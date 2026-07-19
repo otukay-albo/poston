@@ -53,3 +53,13 @@ export function laDateLabel(date: Date = new Date()): string {
     day: "numeric",
   }).format(date);
 }
+
+// 表示用の日本語日付ラベル（例: 7/19(日)）
+export function laDateLabelJa(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat("ja-JP", {
+    timeZone: LA_TZ,
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  }).format(date);
+}
