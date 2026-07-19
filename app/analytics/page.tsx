@@ -213,10 +213,10 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr] gap-4 mb-8 items-stretch">
               <div className="bg-gray-50 dark:bg-gray-900 rounded-xl px-4 py-3 flex flex-col justify-center divide-y divide-gray-200/70 dark:divide-gray-800/70">
                 {[
-                  { label: "合計再生数", value: summary.totalViews.toLocaleString("ja-JP"), sub: null },
-                  { label: "合計いいね", value: summary.totalLikes.toLocaleString("ja-JP"), sub: `いいね率 ${summary.likeRate.toFixed(2)}%` },
-                  { label: "合計コメント", value: summary.totalComments.toLocaleString("ja-JP"), sub: null },
-                  { label: "合計共有", value: summary.totalShares.toLocaleString("ja-JP"), sub: `共有率 ${summary.shareRate.toFixed(2)}%` },
+                  { label: "再生数", value: summary.totalViews.toLocaleString("ja-JP"), sub: null },
+                  { label: "いいね", value: summary.totalLikes.toLocaleString("ja-JP"), sub: `いいね率 ${summary.likeRate.toFixed(2)}%` },
+                  { label: "コメント", value: summary.totalComments.toLocaleString("ja-JP"), sub: null },
+                  { label: "共有", value: summary.totalShares.toLocaleString("ja-JP"), sub: `共有率 ${summary.shareRate.toFixed(2)}%` },
                   { label: "平均エンゲージ率", value: `${summary.avgEng.toFixed(2)}%`, sub: null },
                 ].map((card) => (
                   <div key={card.label} className="flex items-center justify-between gap-3 py-2.5">
