@@ -1,52 +1,55 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getStoredToken, setAccountAnalyticsName } from "../lib/tiktokToken";
+import { listAccounts, getStoredToken, setAccountAnalyticsName, type StoredToken } from "../lib/tiktokToken";
 
-// サイドバーで選択中のアカウントを分析ページに反映するバー。
+// ログイン済みアカウントの中からプルダウンで選択し、その分析を表示する。
 // 分析データ(Supabase)のアカウント名はTikTok名と異なるため、
 // 未設定なら一度だけ「分析データ名」を紐づけてもらう。
 // 解決した分析名を onResolve で親に渡す（未解決なら null）。
 export default function AnalyticsAccountBar({ onResolve }: { onResolve: (name: string | null) => void }) {
-  const [account, setAccount] = useState<{ open_id: string; display_name?: string } | null>(null);
-  const [name, setName] = useState("");
+  const [accounts, setAccounts] = useState<StoredToken[]>([]);
+  const [openId, setOpenId] = useState("");
   const [input, setInput] = useState("");
   const [editing, setEditing] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const t = getStoredToken();
-    if (!t) {
-      setReady(true);
-      onResolve(null);
-      return;
-    }
-    setAccount({ open_id: t.open_id, display_name: t.display_name });
-    if (t.analytics_name) {
-      setName(t.analytics_name);
-      onResolve(t.analytics_name);
-    } else {
-      setEditing(true);
-      onResolve(null);
-    }
+    const list = listAccounts();
+    setAccounts(list);
+    const initial = getStoredToken()?.open_id || list[0]?.open_id || "";
+    setOpenId(initial);
+    const acc = list.find((a) => a.open_id === initial);
+    onResolve(acc?.analytics_name || null);
+    setEditing(acc ? !acc.analytics_name : false);
     setReady(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const selected = accounts.find((a) => a.open_id === openId) || null;
+
+  const changeAccount = (id: string) => {
+    setOpenId(id);
+    setInput("");
+    const acc = listAccounts().find((a) => a.open_id === id);
+    onResolve(acc?.analytics_name || null);
+    setEditing(acc ? !acc.analytics_name : false);
+  };
+
   const save = () => {
     const v = input.trim();
-    if (!v || !account) return;
-    setAccountAnalyticsName(account.open_id, v);
-    setName(v);
-    setEditing(false);
+    if (!v || !openId) return;
+    setAccountAnalyticsName(openId, v);
+    setAccounts(listAccounts());
     onResolve(v);
+    setEditing(false);
   };
 
   if (!ready) return null;
 
   const box = "bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl";
 
-  if (!account) {
+  if (accounts.length === 0) {
     return (
       <div className={`${box} p-5 mb-6 text-sm text-gray-600 dark:text-gray-300`}>
         分析するには、対象のアカウントでログインしてください。
@@ -55,50 +58,55 @@ export default function AnalyticsAccountBar({ onResolve }: { onResolve: (name: s
     );
   }
 
-  const accLabel = account.display_name || account.open_id.slice(0, 8);
-
-  if (editing) {
-    return (
-      <div className={`${box} p-5 mb-6`}>
-        <p className="text-sm font-medium mb-1">
-          アカウント「{accLabel}」の<span className="text-black dark:text-white">分析データ名</span>を設定してください
-        </p>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-          集計スプレッドシート／TikTok Studioで使っているアカウント名を入力（例: yuki_beauty）。一度設定すれば次回から自動で表示されます。
-        </p>
-        <div className="flex gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") save(); }}
-            placeholder="分析データ名"
-            className="flex-1 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
-          />
-          <button
-            onClick={save}
-            disabled={!input.trim()}
-            className="bg-black dark:bg-white text-white dark:text-black rounded-lg px-5 py-2 text-sm font-bold disabled:opacity-30"
-          >
-            保存
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className={`${box} px-5 py-3 mb-6 flex items-center justify-between gap-3`}>
-      <div className="text-sm">
-        <span className="text-gray-500 dark:text-gray-400">分析対象：</span>
-        <span className="font-semibold">{accLabel}</span>
-        <span className="text-gray-400 dark:text-gray-500 ml-2 text-xs">（分析データ名: {name}）</span>
+    <div className={`${box} px-5 py-4 mb-6`}>
+      <div className="flex items-center gap-3 flex-wrap">
+        <label className="text-sm text-gray-500 dark:text-gray-400">アカウント</label>
+        <select
+          value={openId}
+          onChange={(e) => changeAccount(e.target.value)}
+          className="bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm"
+        >
+          {accounts.map((a) => (
+            <option key={a.open_id} value={a.open_id}>{a.display_name || a.open_id.slice(0, 8)}</option>
+          ))}
+        </select>
+        {selected?.analytics_name && !editing && (
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            分析データ名: <span className="text-gray-600 dark:text-gray-300">{selected.analytics_name}</span>
+            <button
+              onClick={() => { setInput(selected.analytics_name || ""); setEditing(true); }}
+              className="underline ml-2 hover:text-black dark:hover:text-white"
+            >
+              変更
+            </button>
+          </span>
+        )}
       </div>
-      <button
-        onClick={() => { setInput(name); setEditing(true); }}
-        className="text-xs text-gray-500 dark:text-gray-400 underline hover:text-black dark:hover:text-white shrink-0"
-      >
-        変更
-      </button>
+
+      {editing && (
+        <div className="mt-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+            このアカウントの<span className="text-black dark:text-white">分析データ名</span>を設定してください（集計スプレッドシート等で使っている名前。例: yuki_beauty）。
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") save(); }}
+              placeholder="分析データ名"
+              className="flex-1 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-500 dark:focus:border-gray-400"
+            />
+            <button
+              onClick={save}
+              disabled={!input.trim()}
+              className="bg-black dark:bg-white text-white dark:text-black rounded-lg px-5 py-2 text-sm font-bold disabled:opacity-30"
+            >
+              保存
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

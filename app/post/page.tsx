@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import AppShell from "../components/AppShell";
+import LaClock from "../components/LaClock";
 import { getValidAccessToken, clearToken, setAccountProfile } from "../lib/tiktokToken";
 
 const 公開設定ラベル: Record<string, string> = {
@@ -175,11 +176,14 @@ export default function 投稿ページ() {
     <AppShell current="post" title="投稿">
       <div className="flex-1 max-w-xl mx-auto w-full px-6 py-10">
         <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-2">
-            <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current shrink-0">
-              <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.26 8.26 0 004.84 1.56V6.79a4.85 4.85 0 01-1.07-.1z"/>
-            </svg>
-            <span className="font-bold text-lg">TikTokに投稿</span>
+          <div>
+            <div className="flex items-center gap-2">
+              <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current shrink-0">
+                <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.26 8.26 0 004.84 1.56V6.79a4.85 4.85 0 01-1.07-.1z"/>
+              </svg>
+              <span className="font-bold text-lg">TikTokに投稿</span>
+            </div>
+            <LaClock className="mt-1" />
           </div>
           {アカウント名 && (
             <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
