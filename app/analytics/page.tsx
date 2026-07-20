@@ -7,6 +7,7 @@ import {
 import AppShell from "../components/AppShell";
 import AnalyticsAccountBar from "../components/AnalyticsAccountBar";
 import TrendAnalysis from "../components/TrendAnalysis";
+import { getTeamKey } from "../lib/tiktokToken";
 
 const METRICS = [
   { key: "再生数", label: "再生数" },
@@ -41,6 +42,37 @@ export default function AnalyticsPage() {
   const [metricIdx, setMetricIdx] = useState(0);
   const [メインタブ, setメインタブ] = useState<"overview" | "aggregate" | "trend">("overview");
   const [集計粒度, set集計粒度] = useState<"月別" | "週別" | "日別">("週別");
+  const [収集中, set収集中] = useState(false);
+  const [収集Msg, set収集Msg] = useState("");
+
+  // チーム同期のアカウントを対象に、Postonが今すぐデータ収集を実行する
+  const 収集実行 = async () => {
+    const key = getTeamKey();
+    if (!key) {
+      set収集Msg("サイドバー左下の「チーム同期を設定」を先に行ってください");
+      return;
+    }
+    set収集中(true);
+    set収集Msg("");
+    try {
+      const res = await fetch("/api/collect-stats", { method: "POST", headers: { "x-team-key": key } });
+      const data = await res.json();
+      if (!res.ok) {
+        set収集Msg(`エラー: ${data.error || res.status}`);
+      } else {
+        const summary = (data.results || [])
+          .map((r: { account: string; inserted?: number; error?: string }) =>
+            r.error ? `${r.account}: ${r.error}` : `${r.account}: ${r.inserted}件`)
+          .join(" ／ ");
+        set収集Msg(`✅ 収集完了（${summary}）。反映のため再読み込みします...`);
+        setTimeout(() => window.location.reload(), 1800);
+      }
+    } catch (e) {
+      set収集Msg("エラー: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      set収集中(false);
+    }
+  };
 
   // URLの ?tab=trend で傾向分析タブを直接開けるようにする
   useEffect(() => {
@@ -254,7 +286,19 @@ export default function AnalyticsPage() {
               </button>
             ))}
           </div>
+          <button
+            onClick={収集実行}
+            disabled={収集中}
+            title="チーム同期に登録された全アカウントの最新データをTikTokから取得します"
+            className="ml-auto text-xs border border-gray-300 dark:border-gray-700 rounded-full px-3.5 py-1.5 hover:border-black dark:hover:border-white transition disabled:opacity-40 whitespace-nowrap"
+          >
+            {収集中 ? "収集中..." : "📥 今すぐ収集"}
+          </button>
         </div>
+
+        {収集Msg && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 -mt-1">{収集Msg}</p>
+        )}
 
         {メインタブ === "overview" && (
           <div className="flex flex-wrap items-center gap-3 mb-5">
