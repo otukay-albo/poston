@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { listAccounts, getStoredToken, switchAccount, removeAccount, type StoredToken } from "../lib/tiktokToken";
+import {
+  listAccounts, getStoredToken, switchAccount, removeAccount,
+  getTeamKey, setTeamKey, clearTeamKey, syncAccountsFromServer,
+  type StoredToken,
+} from "../lib/tiktokToken";
 
 export type Page = "dashboard" | "analytics" | "analysis" | "post" | "calendar" | "import" | "help" | "home";
 
@@ -19,12 +23,51 @@ export default function Sidebar({ current }: { current?: Page }) {
   const [accounts, setAccounts] = useState<StoredToken[]>([]);
   const [activeId, setActiveId] = useState("");
 
+  const [teamEnabled, setTeamEnabled] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
+
   useEffect(() => {
     const saved = localStorage.getItem("theme");
     setDark(saved !== "light");
     setAccounts(listAccounts());
     setActiveId(getStoredToken()?.open_id ?? "");
+
+    // チーム同期が有効なら、共有DBのアカウントを取り込んで一覧を更新
+    if (getTeamKey()) {
+      setTeamEnabled(true);
+      syncAccountsFromServer().then((r) => {
+        if (r.ok) {
+          setAccounts(listAccounts());
+          setActiveId(getStoredToken()?.open_id ?? "");
+        } else if (r.error) {
+          setSyncMsg(`同期エラー: ${r.error}`);
+        }
+      });
+    }
   }, []);
+
+  const enableTeamSync = async () => {
+    const key = window.prompt("チームキーを入力してください（管理者から共有されたもの）");
+    if (!key || !key.trim()) return;
+    setTeamKey(key.trim());
+    setSyncMsg("同期中...");
+    const r = await syncAccountsFromServer();
+    if (r.ok) {
+      setTeamEnabled(true);
+      setSyncMsg("");
+      setAccounts(listAccounts());
+      setActiveId(getStoredToken()?.open_id ?? "");
+    } else {
+      clearTeamKey();
+      setSyncMsg(`エラー: ${r.error}`);
+    }
+  };
+
+  const disableTeamSync = () => {
+    clearTeamKey();
+    setTeamEnabled(false);
+    setSyncMsg("");
+  };
 
   const toggleTheme = () => {
     const next = !dark;
@@ -115,10 +158,29 @@ export default function Sidebar({ current }: { current?: Page }) {
         </div>
       )}
 
+      {/* チーム同期 */}
+      <div className={`border-t border-gray-200 dark:border-gray-800 pt-2 ${accounts.length > 0 ? "" : "mt-auto"}`}>
+        {teamEnabled ? (
+          <div className="px-3 py-1 text-[11px] text-gray-400 dark:text-gray-500 flex items-center justify-between gap-2">
+            <span title="接続済みアカウントを共有DBと同期中">🔗 チーム同期: 有効</span>
+            <button onClick={disableTeamSync} className="underline hover:text-black dark:hover:text-white">解除</button>
+          </div>
+        ) : (
+          <button
+            onClick={enableTeamSync}
+            className="w-full text-left px-3 py-2 rounded-lg text-[12px] text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 hover:text-black dark:hover:text-white transition"
+            title="チームキーを入力すると、接続済みアカウントをチームで共有できます"
+          >
+            🔗 チーム同期を設定
+          </button>
+        )}
+        {syncMsg && <p className="px-3 pb-1 text-[10px] text-yellow-600 dark:text-yellow-400">{syncMsg}</p>}
+      </div>
+
       {/* テーマ切替 */}
       <button
         onClick={toggleTheme}
-        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 hover:text-black dark:hover:text-white transition ${accounts.length > 0 ? "" : "mt-auto"}`}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-900 hover:text-black dark:hover:text-white transition"
       >
         {dark ? (
           <svg viewBox="0 0 24 24" className="w-[18px] h-[18px] fill-current"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z" /></svg>
