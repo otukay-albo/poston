@@ -69,17 +69,37 @@ export default function TrendAnalysis({ analyticsNames }: { analyticsNames: stri
       .slice(0, 15);
   }, [latest]);
 
+  // 投稿時刻をロサンゼルス時間の「時」に変換
+  const laHour = (iso: string) => {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    return Number(
+      new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", hourCycle: "h23" }).format(d)
+    );
+  };
+
+  const median = (nums: number[]) => {
+    if (nums.length === 0) return 0;
+    const s = [...nums].sort((a, b) => a - b);
+    const mid = Math.floor(s.length / 2);
+    return s.length % 2 === 0 ? Math.round((s[mid - 1] + s[mid]) / 2) : s[mid];
+  };
+
   const hourData = useMemo(() => {
-    const map = new Map<number, { views: number; count: number }>();
-    for (let i = 0; i < 24; i++) map.set(i, { views: 0, count: 0 });
+    const map = new Map<number, number[]>();
+    for (let i = 0; i < 24; i++) map.set(i, []);
     latest.forEach((r) => {
       if (!r.posted_at) return;
-      const hour = new Date(r.posted_at).getHours();
-      const existing = map.get(hour)!;
-      map.set(hour, { views: existing.views + r.view_count, count: existing.count + 1 });
+      const hour = laHour(r.posted_at);
+      if (hour === null) return;
+      map.get(hour)!.push(r.view_count || 0);
     });
-    return Array.from(map.entries())
-      .map(([hour, v]) => ({ hour: `${hour}時`, avgViews: v.count > 0 ? Math.round(v.views / v.count) : 0, count: v.count }));
+    return Array.from(map.entries()).map(([hour, views]) => ({
+      hour: `${hour}時`,
+      medViews: median(views),
+      avgViews: views.length > 0 ? Math.round(views.reduce((s, v) => s + v, 0) / views.length) : 0,
+      count: views.length,
+    }));
   }, [latest]);
 
   if (!analyticsNames || analyticsNames.length === 0) return null;
@@ -157,31 +177,33 @@ export default function TrendAnalysis({ analyticsNames }: { analyticsNames: stri
 
       {!loading && !error && tab === "hour" && (
         <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-6">
-          <h2 className="font-bold text-lg mb-2">投稿時間帯別 平均再生数</h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">どの時間帯に投稿すると再生数が伸びやすいか</p>
+          <h2 className="font-bold text-lg mb-2">投稿時間帯別パフォーマンス（LA時間基準）</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">ロサンゼルス時間で、どの時間帯に投稿すると再生数（中央値）が伸びやすいか</p>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={hourData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="hour" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v.toLocaleString("ja-JP")} />
-              <Tooltip formatter={(v) => [Number(v).toLocaleString("ja-JP"), "平均再生数"]} />
-              <Bar dataKey="avgViews" fill="#6366f1" radius={[4, 4, 0, 0]} />
+              <Tooltip formatter={(v) => [Number(v).toLocaleString("ja-JP"), "再生数中央値"]} />
+              <Bar dataKey="medViews" fill="#6366f1" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
           <div className="mt-6 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400">
-                  <th className="text-left py-3 px-4">時間帯</th>
-                  <th className="text-right py-3 px-4">投稿数</th>
+                  <th className="text-left py-3 px-4">時間帯（LA）</th>
+                  <th className="text-right py-3 px-4">投稿本数</th>
+                  <th className="text-right py-3 px-4">再生数中央値</th>
                   <th className="text-right py-3 px-4">平均再生数</th>
                 </tr>
               </thead>
               <tbody>
-                {hourData.filter((h) => h.count > 0).sort((a, b) => b.avgViews - a.avgViews).map((h) => (
+                {hourData.filter((h) => h.count > 0).sort((a, b) => b.medViews - a.medViews).map((h) => (
                   <tr key={h.hour} className="border-b border-gray-100 dark:border-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800/30 transition">
                     <td className="py-3 px-4">{h.hour}</td>
                     <td className="text-right py-3 px-4">{h.count}</td>
+                    <td className="text-right py-3 px-4">{h.medViews.toLocaleString("ja-JP")}</td>
                     <td className="text-right py-3 px-4">{h.avgViews.toLocaleString("ja-JP")}</td>
                   </tr>
                 ))}

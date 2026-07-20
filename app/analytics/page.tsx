@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import AppShell from "../components/AppShell";
 import AnalyticsAccountBar from "../components/AnalyticsAccountBar";
@@ -39,7 +39,8 @@ export default function AnalyticsPage() {
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
   const [期間プリセット, set期間プリセット] = useState("30日");
   const [metricIdx, setMetricIdx] = useState(0);
-  const [メインタブ, setメインタブ] = useState<"overview" | "trend">("overview");
+  const [メインタブ, setメインタブ] = useState<"overview" | "aggregate" | "trend">("overview");
+  const [集計粒度, set集計粒度] = useState<"月別" | "週別" | "日別">("週別");
 
   // URLの ?tab=trend で傾向分析タブを直接開けるようにする
   useEffect(() => {
@@ -117,8 +118,61 @@ export default function AnalyticsPage() {
       : 0;
     const likeRate = totalViews > 0 ? (totalLikes / totalViews) * 100 : 0;
     const shareRate = totalViews > 0 ? (totalShares / totalViews) * 100 : 0;
-    return { totalViews, totalLikes, totalComments, totalShares, avgEng, likeRate, shareRate };
+    const commentRate = totalViews > 0 ? (totalComments / totalViews) * 100 : 0;
+    return { totalViews, totalLikes, totalComments, totalShares, avgEng, likeRate, shareRate, commentRate };
   }, [latestByVideo]);
+
+  // ===== 集計ビュー（月別/週別/日別）: 投稿日時ベース・全取得データ対象 =====
+  const latestAll = useMemo(() => {
+    const map = new Map<string, Row>();
+    rows.forEach((r) => {
+      const existing = map.get(r.動画ID);
+      if (!existing || new Date(r.取得日時) > new Date(existing.取得日時)) {
+        map.set(r.動画ID, r);
+      }
+    });
+    return Array.from(map.values());
+  }, [rows]);
+
+  const median = (nums: number[]) => {
+    if (nums.length === 0) return 0;
+    const s = [...nums].sort((a, b) => a - b);
+    const mid = Math.floor(s.length / 2);
+    return s.length % 2 === 0 ? Math.round((s[mid - 1] + s[mid]) / 2) : s[mid];
+  };
+
+  const 集計データ = useMemo(() => {
+    const groups = new Map<string, { label: string; views: number[] }>();
+    latestAll.forEach((r) => {
+      if (!r.投稿日時) return;
+      const d = new Date(r.投稿日時);
+      if (isNaN(d.getTime())) return;
+      let key = "";
+      let label = "";
+      if (集計粒度 === "月別") {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        label = `${d.getFullYear()}/${d.getMonth() + 1}`;
+      } else if (集計粒度 === "週別") {
+        const start = new Date(d);
+        start.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // 週の開始=月曜
+        key = start.toISOString().slice(0, 10);
+        label = `${start.getMonth() + 1}/${start.getDate()}週`;
+      } else {
+        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        label = `${d.getMonth() + 1}/${d.getDate()}`;
+      }
+      if (!groups.has(key)) groups.set(key, { label, views: [] });
+      groups.get(key)!.views.push(r.再生数 || 0);
+    });
+    return Array.from(groups.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([, g]) => ({
+        期間: g.label,
+        投稿本数: g.views.length,
+        中央値: median(g.views),
+        合計: g.views.reduce((s, v) => s + v, 0),
+      }));
+  }, [latestAll, 集計粒度]);
 
   const chartData = useMemo(() => {
     const metric = METRICS[metricIdx].key as keyof Row;
@@ -147,19 +201,22 @@ export default function AnalyticsPage() {
   };
 
   const downloadCSV = () => {
-    const headers = ["タイトル", "再生数", "いいね", "いいね率(%)", "コメント", "共有", "共有率(%)", "エンゲージ率(%)", "投稿日時"];
+    const headers = ["タイトル", "再生数", "いいね", "いいね率(%)", "コメント", "コメント率(%)", "共有", "共有率(%)", "エンゲージ率(%)", "尺(秒)", "投稿日時"];
     const lines = videoList.map((v) => {
       const likeRate = v.再生数 > 0 ? ((v.いいね数 / v.再生数) * 100).toFixed(2) : "0.00";
       const shareRate = v.再生数 > 0 ? ((v.シェア数 / v.再生数) * 100).toFixed(2) : "0.00";
+      const commentRate = v.再生数 > 0 ? ((v.コメント数 / v.再生数) * 100).toFixed(2) : "0.00";
       return [
         v.タイトル || "（タイトルなし）",
         v.再生数,
         v.いいね数,
         likeRate,
         v.コメント数,
+        commentRate,
         v.シェア数,
         shareRate,
         Number(v["エンゲージメント率(%)"]).toFixed(2),
+        v["動画時間(秒)"] ?? "",
         v.投稿日時 || "",
       ]
         .map(escapeCSV)
@@ -183,7 +240,7 @@ export default function AnalyticsPage() {
           <AnalyticsAccountBar onResolve={setAnalyticsNames} />
           <span className="hidden sm:block w-px h-5 bg-gray-200 dark:bg-gray-800"></span>
           <div className="inline-flex bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-full p-0.5">
-            {([["overview", "概要"], ["trend", "傾向分析"]] as const).map(([v, l]) => (
+            {([["overview", "概要"], ["aggregate", "集計"], ["trend", "傾向分析"]] as const).map(([v, l]) => (
               <button
                 key={v}
                 onClick={() => setメインタブ(v)}
@@ -230,6 +287,73 @@ export default function AnalyticsPage() {
 
         {メインタブ === "trend" && <TrendAnalysis analyticsNames={analyticsNames} />}
 
+        {メインタブ === "aggregate" && (
+          <>
+            <div className="flex items-center gap-3 mb-4 flex-wrap">
+              <div className="flex gap-1.5">
+                {(["月別", "週別", "日別"] as const).map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => set集計粒度(g)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs transition ${
+                      集計粒度 === g
+                        ? "bg-black dark:bg-white text-white dark:text-black font-bold"
+                        : "bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:text-black dark:hover:text-white"
+                    }`}
+                  >
+                    {g}
+                  </button>
+                ))}
+              </div>
+              <span className="text-xs text-gray-400 dark:text-gray-600">投稿日ベース・全取得データ対象（各動画は最新値）</span>
+            </div>
+
+            {集計データ.length === 0 ? (
+              <p className="text-gray-400 py-10 text-center">データがありません</p>
+            ) : (
+              <>
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 mb-4">
+                  <p className="text-sm font-bold mb-2">インプレッション中央値の推移（{集計粒度}）</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={集計データ}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ccc" className="dark:[stroke:#333]" />
+                      <XAxis dataKey="期間" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => v.toLocaleString("ja-JP")} />
+                      <Tooltip formatter={(v) => [Number(v).toLocaleString("ja-JP"), "中央値"]} />
+                      <Bar dataKey="中央値" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400">
+                          <th className="text-left px-6 py-3">期間</th>
+                          <th className="text-right px-4 py-3">投稿本数</th>
+                          <th className="text-right px-4 py-3">インプレッション中央値</th>
+                          <th className="text-right px-4 py-3">合計インプレッション</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...集計データ].reverse().map((g) => (
+                          <tr key={g.期間} className="border-b border-gray-100 dark:border-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800/30 transition">
+                            <td className="px-6 py-3 tabular-nums">{g.期間}</td>
+                            <td className="text-right px-4 py-3 tabular-nums">{g.投稿本数}</td>
+                            <td className="text-right px-4 py-3 tabular-nums">{g.中央値.toLocaleString("ja-JP")}</td>
+                            <td className="text-right px-4 py-3 tabular-nums">{g.合計.toLocaleString("ja-JP")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
         {メインタブ === "overview" && loading && (
           <div className="flex items-center justify-center py-20">
             <div className="w-8 h-8 border-4 border-black dark:border-white border-t-transparent rounded-full animate-spin"></div>
@@ -250,7 +374,7 @@ export default function AnalyticsPage() {
                 {[
                   { label: "再生数", value: summary.totalViews.toLocaleString("ja-JP"), sub: null },
                   { label: "いいね", value: summary.totalLikes.toLocaleString("ja-JP"), sub: `いいね率 ${summary.likeRate.toFixed(2)}%` },
-                  { label: "コメント", value: summary.totalComments.toLocaleString("ja-JP"), sub: null },
+                  { label: "コメント", value: summary.totalComments.toLocaleString("ja-JP"), sub: `コメント率 ${summary.commentRate.toFixed(2)}%` },
                   { label: "共有", value: summary.totalShares.toLocaleString("ja-JP"), sub: `共有率 ${summary.shareRate.toFixed(2)}%` },
                   { label: "平均エンゲージ率", value: `${summary.avgEng.toFixed(2)}%`, sub: null },
                 ].map((card) => (
@@ -314,9 +438,12 @@ export default function AnalyticsPage() {
                       <th className="text-right px-4 py-3">いいね</th>
                       <th className="text-right px-4 py-3">いいね率</th>
                       <th className="text-right px-4 py-3">コメント</th>
+                      <th className="text-right px-4 py-3">コメント率</th>
                       <th className="text-right px-4 py-3">共有</th>
                       <th className="text-right px-4 py-3">共有率</th>
                       <th className="text-right px-4 py-3">エンゲージ率</th>
+                      <th className="text-right px-4 py-3">尺(秒)</th>
+                      <th className="text-right px-4 py-3 whitespace-nowrap">投稿日時</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -334,13 +461,18 @@ export default function AnalyticsPage() {
                         <td className="text-right px-4 py-3">{v.いいね数.toLocaleString("ja-JP")}</td>
                         <td className="text-right px-4 py-3 text-gray-500 dark:text-gray-400">{v.再生数 > 0 ? ((v.いいね数 / v.再生数) * 100).toFixed(2) : "0.00"}%</td>
                         <td className="text-right px-4 py-3">{v.コメント数.toLocaleString("ja-JP")}</td>
+                        <td className="text-right px-4 py-3 text-gray-500 dark:text-gray-400">{v.再生数 > 0 ? ((v.コメント数 / v.再生数) * 100).toFixed(2) : "0.00"}%</td>
                         <td className="text-right px-4 py-3">{v.シェア数.toLocaleString("ja-JP")}</td>
                         <td className="text-right px-4 py-3 text-gray-500 dark:text-gray-400">{v.再生数 > 0 ? ((v.シェア数 / v.再生数) * 100).toFixed(2) : "0.00"}%</td>
                         <td className="text-right px-4 py-3">{Number(v["エンゲージメント率(%)"]).toFixed(2)}%</td>
+                        <td className="text-right px-4 py-3 text-gray-500 dark:text-gray-400">{v["動画時間(秒)"] || "-"}</td>
+                        <td className="text-right px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                          {v.投稿日時 ? new Date(v.投稿日時).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "-"}
+                        </td>
                       </tr>
                     ))}
                     {videoList.length === 0 && (
-                      <tr><td colSpan={8} className="text-center py-10 text-gray-400">データがありません</td></tr>
+                      <tr><td colSpan={11} className="text-center py-10 text-gray-400">データがありません</td></tr>
                     )}
                   </tbody>
                 </table>
