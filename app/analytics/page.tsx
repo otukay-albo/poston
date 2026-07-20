@@ -292,7 +292,7 @@ export default function AnalyticsPage() {
             title="チーム同期に登録された全アカウントの最新データをTikTokから取得します"
             className="ml-auto text-xs border border-gray-300 dark:border-gray-700 rounded-full px-3.5 py-1.5 hover:border-black dark:hover:border-white transition disabled:opacity-40 whitespace-nowrap"
           >
-            {収集中 ? "収集中..." : "📥 今すぐ収集"}
+            {収集中 ? "更新中..." : "🔄 更新"}
           </button>
         </div>
 
