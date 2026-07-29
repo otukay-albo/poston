@@ -91,9 +91,8 @@ export default function Sidebar({ current }: { current?: Page }) {
     <aside className="w-48 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-black flex flex-col gap-5 p-3 sticky top-0 h-screen overflow-y-auto">
       {/* ロゴ */}
       <a href="/dashboard" className="flex items-center gap-3 px-2 pt-1">
-        <div className="w-9 h-9 bg-black dark:bg-white rounded-xl flex items-center justify-center">
-          <span className="text-white dark:text-black font-bold text-xl">P</span>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Poston" className="w-9 h-9 rounded-xl" />
         <div>
           <div className="font-bold text-lg leading-none">Poston</div>
           <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">TikTok運用ダッシュボード</div>

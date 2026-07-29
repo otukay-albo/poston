@@ -3,9 +3,8 @@ export default function TermsPage() {
     <main className="min-h-screen bg-black text-white flex flex-col">
       <header className="flex items-center gap-3 px-8 py-5 bg-black border-b border-gray-800">
         <a href="/" className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
-            <span className="text-black font-bold text-xl">P</span>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Poston" className="w-9 h-9 rounded-xl" />
           <span className="text-white font-bold text-xl tracking-wide">Poston</span>
         </a>
       </header>

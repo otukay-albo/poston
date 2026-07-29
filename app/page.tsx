@@ -53,17 +53,15 @@ export default function Home() {
     <main className="min-h-screen bg-black text-white flex flex-col">
       {/* Header */}
       <header className="flex items-center gap-3 px-8 py-5 bg-black border-b border-gray-800">
-        <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center">
-          <span className="text-black font-bold text-xl">P</span>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Poston" className="w-9 h-9 rounded-xl" />
         <span className="text-white font-bold text-xl tracking-wide">Poston</span>
       </header>
 
       {/* Hero */}
       <section className="flex flex-col items-center justify-center flex-1 px-6 text-center py-20">
-        <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-8">
-          <span className="text-black font-extrabold text-5xl">P</span>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Poston" className="w-20 h-20 rounded-2xl mb-8" />
         <h1 className="text-5xl font-extrabold mb-6">Poston</h1>
         <p className="text-gray-400 text-lg max-w-lg mb-10 leading-relaxed">
           TikTokアカウントを一元管理。動画の自動投稿・アナリティクス取得を効率化する企業向けツールです。
