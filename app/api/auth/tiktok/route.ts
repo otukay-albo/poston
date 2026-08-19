@@ -5,7 +5,10 @@ export async function POST(req: NextRequest) {
 
   const clientKey = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY!;
   const clientSecret = process.env.TIKTOK_CLIENT_SECRET!;
-  const redirectUri = "https://poston-app-five.vercel.app/callback";
+  // 環境変数があればそれを使う（サンドボックス切替や別ドメイン展開に対応）
+  // ※ トークン交換時のredirect_uriは認可時と完全一致が必須
+  const redirectUri =
+    process.env.NEXT_PUBLIC_REDIRECT_URI || "https://poston-app-five.vercel.app/callback";
 
   const params = new URLSearchParams({
     client_key: clientKey,
