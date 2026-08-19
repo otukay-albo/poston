@@ -28,9 +28,14 @@ export default function 投稿ページ() {
   const [動画URL, set動画URL] = useState<string | null>(null);
   const [タイトル, setタイトル] = useState("");
   const [公開設定, set公開設定] = useState("");
-  const [デュエット無効, setデュエット無効] = useState(false);
-  const [スティッチ無効, setスティッチ無効] = useState(false);
-  const [コメント無効, setコメント無効] = useState(false);
+  // TikTok UXガイドライン: 「許可する」形式で、初期状態は全て未チェック
+  const [コメント許可, setコメント許可] = useState(false);
+  const [デュエット許可, setデュエット許可] = useState(false);
+  const [スティッチ許可, setスティッチ許可] = useState(false);
+  // 商用コンテンツ開示（既定オフ）
+  const [商用開示, set商用開示] = useState(false);
+  const [自社ブランド, set自社ブランド] = useState(false);
+  const [タイアップ, setタイアップ] = useState(false);
   const [投稿中, set投稿中] = useState(false);
   const [エラー, setエラー] = useState("");
   const [アカウント名, setアカウント名] = useState("");
@@ -42,7 +47,7 @@ export default function 投稿ページ() {
   const [再ログイン必要, set再ログイン必要] = useState(false);
   const [読込中, set読込中] = useState(true);
   const [アカウントID, setアカウントID] = useState("");
-  const [投稿タイミング, set投稿タイミング] = useState<"now" | "schedule">("now");
+  const [投稿タイミング, set投稿タイミング] = useState<"now" | "schedule" | "draft">("now");
   const [予約日付, set予約日付] = useState("");
   const [予約時刻, set予約時刻] = useState("");
   const [予約一覧, set予約一覧] = useState<ScheduledPost[]>([]);
@@ -153,23 +158,32 @@ export default function 投稿ページ() {
 
     try {
       // ステップ1: TikTokにアップロード先URLを発行してもらう
-      const initRes = await fetch("/api/post", {
+      // 下書き送信(video.upload)と公開投稿(video.publish)でエンドポイントが異なる
+      const 下書き = 投稿タイミング === "draft";
+      const initRes = await fetch(下書き ? "/api/upload-draft" : "/api/post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          access_token,
-          title: タイトル,
-          privacy_level: 公開設定,
-          disable_duet: デュエット無効 || デュエット不可,
-          disable_stitch: スティッチ無効 || スティッチ不可,
-          disable_comment: コメント無効 || コメント不可,
-          video_size: 動画ファイル.size,
-        }),
+        body: JSON.stringify(
+          下書き
+            ? { access_token, video_size: 動画ファイル.size }
+            : {
+                access_token,
+                title: タイトル,
+                privacy_level: 公開設定,
+                // 「許可する」がオフ、またはアカウント側で不可の場合は無効化して送る
+                disable_comment: !コメント許可 || コメント不可,
+                disable_duet: !デュエット許可 || デュエット不可,
+                disable_stitch: !スティッチ許可 || スティッチ不可,
+                video_size: 動画ファイル.size,
+                brand_content_toggle: 商用開示 && タイアップ,
+                brand_organic_toggle: 商用開示 && 自社ブランド,
+              }
+        ),
       });
       const initData = await initRes.json();
       if (!initRes.ok || initData.error) {
         const codeStr = initData.code ? `［${initData.code}］` : "";
-        setエラー((initData.error || `投稿の初期化に失敗しました (${initRes.status})`) + codeStr);
+        setエラー((initData.error || `${下書き ? "下書き送信" : "投稿"}の初期化に失敗しました (${initRes.status})`) + codeStr);
         set投稿中(false);
         return;
       }
@@ -206,6 +220,12 @@ export default function 投稿ページ() {
     setタイトル("");
     set公開設定("");
     setエラー("");
+    setコメント許可(false);
+    setデュエット許可(false);
+    setスティッチ許可(false);
+    set商用開示(false);
+    set自社ブランド(false);
+    setタイアップ(false);
     set投稿タイミング("now");
     const def = laDefaultDateTime();
     set予約日付(def.date);
@@ -345,7 +365,7 @@ export default function 投稿ページ() {
               <p className="text-xs text-gray-400 dark:text-gray-600 text-right mt-1">{タイトル.length} / 2200</p>
             </div>
 
-            <div>
+            <div className={投稿タイミング === "draft" ? "hidden" : ""}>
               <label className="block text-sm text-gray-500 dark:text-gray-400 mb-2">公開設定</label>
               <select
                 value={公開設定}
@@ -368,25 +388,112 @@ export default function 投稿ページ() {
               <label className="block text-sm text-gray-500 dark:text-gray-400 mb-3">インタラクション設定</label>
               <div className="space-y-3">
                 {[
-                  { label: "デュエットを無効にする", value: デュエット無効, set: setデュエット無効, locked: デュエット不可 },
-                  { label: "スティッチを無効にする", value: スティッチ無効, set: setスティッチ無効, locked: スティッチ不可 },
-                  { label: "コメントを無効にする", value: コメント無効, set: setコメント無効, locked: コメント不可 },
+                  { label: "コメントを許可する", value: コメント許可, set: setコメント許可, locked: コメント不可 },
+                  { label: "デュエットを許可する", value: デュエット許可, set: setデュエット許可, locked: デュエット不可 },
+                  { label: "スティッチを許可する", value: スティッチ許可, set: setスティッチ許可, locked: スティッチ不可 },
                 ].map((item) => (
-                  <label key={item.label} className={`flex items-center gap-3 ${item.locked ? "opacity-60" : "cursor-pointer"}`}>
+                  <label key={item.label} className={`flex items-center gap-3 ${item.locked ? "opacity-50" : "cursor-pointer"}`}>
                     <input
                       type="checkbox"
-                      checked={item.value || item.locked}
+                      checked={item.locked ? false : item.value}
                       disabled={item.locked}
                       onChange={(e) => item.set(e.target.checked)}
                       className="w-4 h-4"
                     />
                     <span className="text-sm text-gray-700 dark:text-gray-300">
                       {item.label}
-                      {item.locked && <span className="text-xs text-gray-400 ml-1">（アカウント設定で無効）</span>}
+                      {item.locked && <span className="text-xs text-gray-400 ml-1">（このアカウントでは利用できません）</span>}
                     </span>
                   </label>
                 ))}
               </div>
+            </div>
+
+            {/* 商用コンテンツ開示（TikTok UXガイドライン必須） */}
+            <div>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium">このコンテンツを商用目的として開示する</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    自分自身・ブランド・商品・サービスの宣伝を含む場合はオンにしてください。
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={商用開示}
+                  onClick={() => {
+                    const next = !商用開示;
+                    set商用開示(next);
+                    if (!next) { set自社ブランド(false); setタイアップ(false); }
+                  }}
+                  className={`relative w-11 h-6 rounded-full shrink-0 transition ${
+                    商用開示 ? "bg-black dark:bg-white" : "bg-gray-300 dark:bg-gray-700"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white dark:bg-black transition-all ${
+                      商用開示 ? "left-[1.375rem]" : "left-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {商用開示 && (
+                <div className="mt-3 space-y-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={自社ブランド}
+                      onChange={(e) => set自社ブランド(e.target.checked)}
+                      className="w-4 h-4 mt-0.5"
+                    />
+                    <span className="text-sm">
+                      あなたのブランド
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        自分のビジネス・商品・サービスを宣伝する場合
+                      </span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={タイアップ}
+                      onChange={(e) => setタイアップ(e.target.checked)}
+                      className="w-4 h-4 mt-0.5"
+                    />
+                    <span className="text-sm">
+                      ブランドコンテンツ（タイアップ）
+                      <span className="block text-xs text-gray-500 dark:text-gray-400">
+                        第三者のブランドから対価を受けて宣伝する場合
+                      </span>
+                    </span>
+                  </label>
+
+                  {!自社ブランド && !タイアップ && (
+                    <p className="text-xs text-red-500">
+                      「あなたのブランド」または「ブランドコンテンツ」のいずれかを選択してください。
+                    </p>
+                  )}
+                  {(自社ブランド || タイアップ) && (
+                    <p className="text-xs text-gray-600 dark:text-gray-300">
+                      この投稿は{タイアップ ? "「Paid partnership（タイアップ投稿）」" : "「Promotional content（プロモーションコンテンツ）」"}として表示されます。
+                    </p>
+                  )}
+                  {タイアップ && 公開設定 === "SELF_ONLY" && (
+                    <p className="text-xs text-red-500">
+                      ブランドコンテンツは「自分のみ（非公開）」では投稿できません。公開範囲を変更してください。
+                    </p>
+                  )}
+                  {タイアップ && (
+                    <p className="text-[11px] text-gray-400 dark:text-gray-600">
+                      ブランドコンテンツを投稿することで、TikTokの
+                      <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noreferrer" className="underline">ブランデッドコンテンツポリシー</a>
+                      に同意したものとみなされます。
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -395,12 +502,13 @@ export default function 投稿ページ() {
                 {([
                   { v: "now", l: "今すぐ投稿" },
                   { v: "schedule", l: "予約する" },
+                  { v: "draft", l: "下書きに送る" },
                 ] as const).map((o) => (
                   <button
                     key={o.v}
                     type="button"
                     onClick={() => set投稿タイミング(o.v)}
-                    className={`flex-1 rounded-lg border px-4 py-2.5 text-sm transition ${
+                    className={`flex-1 rounded-lg border px-3 py-2.5 text-sm transition ${
                       投稿タイミング === o.v
                         ? "border-black dark:border-white bg-black dark:bg-white text-white dark:text-black font-bold"
                         : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-gray-500 dark:hover:border-gray-400"
@@ -437,6 +545,11 @@ export default function 投稿ページ() {
                   </p>
                 </div>
               )}
+              {投稿タイミング === "draft" && (
+                <p className="mt-3 text-xs text-gray-500 dark:text-gray-400 leading-relaxed bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-3">
+                  動画をTikTokアプリの<strong>下書き</strong>に送ります。公開はされません。TikTokアプリの通知から下書きを開き、音楽やエフェクトを追加してご自身で投稿してください。
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -445,7 +558,16 @@ export default function 投稿ページ() {
               </a>
               <button
                 onClick={() => setステップ("確認")}
-                disabled={!動画ファイル || !公開設定 || (投稿タイミング === "schedule" && (!予約日付 || !予約時刻))}
+                disabled={
+                  !動画ファイル ||
+                  // 下書き送信はTikTokアプリ側で設定するため公開範囲は不要
+                  (投稿タイミング !== "draft" && !公開設定) ||
+                  (投稿タイミング === "schedule" && (!予約日付 || !予約時刻)) ||
+                  // 商用開示オンなら、いずれかの種別を選ぶまで進めない
+                  (商用開示 && !自社ブランド && !タイアップ) ||
+                  // ブランドコンテンツは非公開で投稿できない
+                  (商用開示 && タイアップ && 公開設定 === "SELF_ONLY")
+                }
                 className="flex-1 bg-black dark:bg-white text-white dark:text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:opacity-80 transition"
               >
                 内容を確認する
@@ -494,12 +616,27 @@ export default function 投稿ページ() {
 
             <div className="bg-gray-50 dark:bg-gray-900 rounded-xl divide-y divide-gray-200 dark:divide-gray-800 text-sm">
               {[
-                { label: "投稿タイミング", value: 投稿タイミング === "now" ? "今すぐ投稿" : `予約 ${予約日付} ${予約時刻}（LA）` },
+                {
+                  label: "投稿タイミング",
+                  value:
+                    投稿タイミング === "now" ? "今すぐ投稿"
+                    : 投稿タイミング === "draft" ? "TikTokの下書きに送る"
+                    : `予約 ${予約日付} ${予約時刻}（LA）`,
+                },
                 { label: "タイトル", value: タイトル || "（未入力）" },
-                { label: "公開設定", value: 公開設定ラベル[公開設定] || 公開設定 },
-                { label: "デュエット", value: デュエット無効 ? "無効" : "有効" },
-                { label: "スティッチ", value: スティッチ無効 ? "無効" : "有効" },
-                { label: "コメント", value: コメント無効 ? "無効" : "有効" },
+                ...(投稿タイミング === "draft"
+                  ? []
+                  : [
+                      { label: "公開設定", value: 公開設定ラベル[公開設定] || 公開設定 },
+                      { label: "コメント", value: コメント不可 ? "利用不可" : コメント許可 ? "許可" : "不許可" },
+                      { label: "デュエット", value: デュエット不可 ? "利用不可" : デュエット許可 ? "許可" : "不許可" },
+                      { label: "スティッチ", value: スティッチ不可 ? "利用不可" : スティッチ許可 ? "許可" : "不許可" },
+                      {
+                        label: "商用コンテンツ開示",
+                        value: !商用開示 ? "なし"
+                          : [自社ブランド && "あなたのブランド", タイアップ && "ブランドコンテンツ"].filter(Boolean).join("・"),
+                      },
+                    ]),
               ].map((row) => (
                 <div key={row.label} className="flex justify-between px-5 py-3">
                   <span className="text-gray-500 dark:text-gray-400">{row.label}</span>
@@ -514,11 +651,22 @@ export default function 投稿ページ() {
               </div>
             )}
 
-            <p className="text-xs text-gray-500 dark:text-gray-500 leading-relaxed">
-              投稿することで、あなたはTikTokの
-              <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noreferrer" className="underline hover:text-black dark:hover:text-white">音楽利用の確認事項（Music Usage Confirmation）</a>
-              に同意したものとみなされます。
-            </p>
+            <div className="space-y-1.5">
+              <p className="text-xs text-gray-500 dark:text-gray-500 leading-relaxed">
+                投稿することで、あなたはTikTokの
+                <a href="https://www.tiktok.com/legal/page/global/music-usage-confirmation/en" target="_blank" rel="noreferrer" className="underline hover:text-black dark:hover:text-white">音楽利用の確認事項（Music Usage Confirmation）</a>
+                {商用開示 && タイアップ && (
+                  <>
+                    および
+                    <a href="https://www.tiktok.com/legal/page/global/bc-policy/en" target="_blank" rel="noreferrer" className="underline hover:text-black dark:hover:text-white">ブランデッドコンテンツポリシー</a>
+                  </>
+                )}
+                に同意したものとみなされます。
+              </p>
+              <p className="text-xs text-gray-400 dark:text-gray-600">
+                ※ TikTok側での処理に数分かかる場合があります。
+              </p>
+            </div>
 
             <div className="flex gap-3">
               <button
@@ -532,7 +680,10 @@ export default function 投稿ページ() {
                 disabled={投稿中}
                 className="flex-1 bg-black dark:bg-white text-white dark:text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:opacity-80 transition"
               >
-                {投稿中 ? "投稿中..." : 投稿タイミング === "schedule" ? "予約を保存する" : "TikTokに投稿する"}
+                {投稿中 ? "送信中..."
+                  : 投稿タイミング === "schedule" ? "予約を保存する"
+                  : 投稿タイミング === "draft" ? "TikTokの下書きに送る"
+                  : "TikTokに投稿する"}
               </button>
             </div>
           </div>
@@ -540,12 +691,20 @@ export default function 投稿ページ() {
 
         {ステップ === "完了" && (
           <div className="text-center py-20">
-            <p className="text-5xl mb-4">{投稿タイミング === "schedule" ? "📅" : "✅"}</p>
-            <h2 className="text-2xl font-bold mb-2">{投稿タイミング === "schedule" ? "予約を保存しました" : "投稿が完了しました"}</h2>
-            <p className="text-gray-500 dark:text-gray-400 mb-8">
+            <p className="text-5xl mb-4">
+              {投稿タイミング === "schedule" ? "📅" : 投稿タイミング === "draft" ? "📥" : "✅"}
+            </p>
+            <h2 className="text-2xl font-bold mb-2">
+              {投稿タイミング === "schedule" ? "予約を保存しました"
+                : 投稿タイミング === "draft" ? "下書きに送信しました"
+                : "投稿が完了しました"}
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 mb-8 max-w-sm mx-auto leading-relaxed">
               {投稿タイミング === "schedule"
                 ? `${予約日付} ${予約時刻}（LA）で予約カレンダーに登録しました`
-                : "TikTokに動画を投稿しました"}
+                : 投稿タイミング === "draft"
+                ? "TikTokアプリの通知から下書きを開き、音楽やエフェクトを追加してご自身で投稿してください。処理に数分かかる場合があります。"
+                : "TikTokに動画を投稿しました。処理に数分かかる場合があります。"}
             </p>
             <div className="flex gap-3 justify-center">
               {投稿タイミング === "schedule" ? (

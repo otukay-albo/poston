@@ -11,6 +11,8 @@ export async function POST(req: NextRequest) {
     disable_stitch,
     disable_comment,
     video_size,
+    brand_content_toggle,
+    brand_organic_toggle,
   } = await req.json();
 
   if (!access_token) {
@@ -33,6 +35,9 @@ export async function POST(req: NextRequest) {
         disable_duet: !!disable_duet,
         disable_stitch: !!disable_stitch,
         disable_comment: !!disable_comment,
+        // 商用コンテンツ開示（TikTok UXガイドライン必須項目）
+        brand_content_toggle: !!brand_content_toggle, // タイアップ投稿
+        brand_organic_toggle: !!brand_organic_toggle, // 自社ブランドの宣伝
       },
       source_info: {
         source: "FILE_UPLOAD",
