@@ -33,7 +33,11 @@ export default function Home() {
     // 環境変数があればそれを使う（サンドボックス切替や別ドメイン展開に対応）
     const redirectUri =
       process.env.NEXT_PUBLIC_REDIRECT_URI || "https://poston-app-five.vercel.app/callback";
-    const scope = "user.info.basic,user.info.stats,video.list,video.publish";
+    // 要求するスコープ。サンドボックス等で構成が違う場合は
+    // 環境変数 NEXT_PUBLIC_TIKTOK_SCOPES で上書きできる
+    const scope =
+      process.env.NEXT_PUBLIC_TIKTOK_SCOPES ||
+      "user.info.basic,user.info.stats,video.list,video.publish";
 
     const authUrl =
       `https://www.tiktok.com/v2/auth/authorize/?` +
