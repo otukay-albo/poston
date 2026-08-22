@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AccountAvatar from "./AccountAvatar";
 import { listAccounts, getStoredToken, setAccountAnalyticsName, type StoredToken } from "../lib/tiktokToken";
 
 const ALL = "__ALL__";
@@ -70,13 +71,9 @@ export default function AnalyticsAccountBar({ onResolve }: { onResolve: (names: 
     );
   }
 
-  const Avatar = ({ a }: { a: StoredToken | null }) =>
-    a?.avatar_url ? (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={a.avatar_url} alt="" className="w-6 h-6 rounded-full shrink-0" />
-    ) : (
-      <span className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[11px] shrink-0">👤</span>
-    );
+  const Avatar = ({ a }: { a: StoredToken | null }) => (
+    <AccountAvatar src={a?.avatar_url} name={a?.display_name || a?.open_id} size={24} />
+  );
 
   const AllIcon = () => (
     <span className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[11px] shrink-0">👥</span>

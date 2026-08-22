@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import AppShell from "../components/AppShell";
+import AccountAvatar from "../components/AccountAvatar";
 import LaClock from "../components/LaClock";
 import ScheduleCalendar from "../components/ScheduleCalendar";
 import { getValidAccessToken, clearToken, setAccountProfile } from "../lib/tiktokToken";
@@ -282,10 +283,7 @@ export default function 投稿ページ() {
           </div>
           {アカウント名 && (
             <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5">
-              {アバター && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={アバター} alt={アカウント名} className="w-6 h-6 rounded-full" />
-              )}
+              <AccountAvatar src={アバター} name={アカウント名} size={24} />
               <span className="text-sm font-medium">{アカウント名}</span>
             </div>
           )}

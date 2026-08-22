@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import AccountAvatar from "./AccountAvatar";
 import {
   listAccounts, getStoredToken, switchAccount, removeAccount,
   getTeamKey, setTeamKey, clearTeamKey, syncAccountsFromServer,
@@ -135,20 +136,20 @@ export default function Sidebar({ current }: { current?: Page }) {
                 a.open_id === activeId ? "bg-gray-100 dark:bg-gray-900" : "hover:bg-gray-100 dark:hover:bg-gray-900"
               }`}
             >
-              {a.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={a.avatar_url} alt="" className="w-6 h-6 rounded-full" />
-              ) : (
-                <span className="w-6 h-6 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs">👤</span>
+              <AccountAvatar src={a.avatar_url} name={a.display_name || a.open_id} size={24} />
+              <span className="text-sm flex-1 min-w-0 truncate group-hover:hidden">
+                {a.display_name || a.open_id.slice(0, 8)}
+              </span>
+              {a.open_id === activeId && (
+                <span className="text-[10px] text-green-500 group-hover:hidden">●</span>
               )}
-              <span className="text-sm flex-1 truncate">{a.display_name || a.open_id.slice(0, 8)}</span>
-              {a.open_id === activeId && <span className="text-[10px] text-green-500">●</span>}
+              {/* マウスを乗せると「ログアウト」を表示 */}
               <button
                 onClick={(e) => handleRemove(e, a.open_id)}
-                className="text-gray-400 hover:text-red-500 text-xs transition"
-                title="このアカウントの接続を解除（ログアウト）"
+                className="hidden group-hover:block flex-1 text-right text-[11px] text-gray-500 hover:text-red-500 whitespace-nowrap"
+                title="このアカウントの接続を解除します"
               >
-                ✕
+                ログアウト
               </button>
             </div>
           ))}
