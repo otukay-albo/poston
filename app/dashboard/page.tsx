@@ -30,17 +30,30 @@ export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [読込中, set読込中] = useState(true);
+  const [エラー, setエラー] = useState("");
   const [要再ログイン, set要再ログイン] = useState(false);
+  // 保存済みのアカウント情報（画面を即座に表示するために使う）
+  const [保存名, set保存名] = useState("");
+  const [保存アバター, set保存アバター] = useState<string | undefined>(undefined);
 
   useEffect(() => {
+    // 1) まず保存済みの情報で即座に画面を描画する
+    const stored = getStoredToken();
+    set保存名(stored?.display_name || "");
+    set保存アバター(stored?.avatar_url);
+    if (!stored) {
+      set要再ログイン(true);
+      set読込中(false);
+      return;
+    }
+
+    // 2) 実データはバックグラウンドで取得して順次反映する
     (async () => {
       const token = await getValidAccessToken();
       if (!token) {
-        // 無言でログイン画面へ飛ばさず、理由を表示して再ログインを促す
         set要再ログイン(true);
-        setLoading(false);
+        set読込中(false);
         return;
       }
       const { access_token, open_id } = token;
@@ -52,12 +65,11 @@ export default function DashboardPage() {
         if (userData.error) throw new Error(userData.error);
         setUser(userData);
         setVideos(videoData.videos || []);
-        // アカウント切替UIに表示する名前・アイコンを保存
         setAccountProfile(open_id, userData.display_name, userData.avatar_url);
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        setエラー(e instanceof Error ? e.message : String(e));
       } finally {
-        setLoading(false);
+        set読込中(false);
       }
     })();
   }, [router]);
@@ -80,96 +92,85 @@ export default function DashboardPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-10 h-10 border-4 border-black dark:border-white border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-500 dark:text-gray-400">データを読み込み中...</p>
-        </div>
-      </main>
-    );
-  }
+  const 表示名 = user?.display_name || 保存名 || "アカウント";
+  const 表示アバター = user?.avatar_url || 保存アバター;
+  const 合計 = (key: "view_count" | "like_count") =>
+    videos.reduce((s, v) => s + (v[key] || 0), 0).toLocaleString();
 
-  if (要再ログイン) {
-    return (
-      <AppShell current="dashboard" title="ダッシュボード">
-        <div className="flex-1 flex items-center justify-center px-6 py-20">
-          <div className="max-w-md text-center bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-300 dark:border-yellow-800 rounded-xl p-8 space-y-4">
-            <p className="text-4xl">🔑</p>
-            <p className="font-bold text-lg">再ログインが必要です</p>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-              このアカウントのログイン情報の有効期限が切れているか、無効になっています。
-              サイドバーから別のアカウントに切り替えるか、ログインし直してください。
-            </p>
-            <a
-              href="/"
-              className="inline-block bg-black dark:bg-white text-white dark:text-black rounded-full px-8 py-3 text-sm font-bold hover:opacity-80 transition"
-            >
-              ログインし直す
-            </a>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
+  // 数値がまだ無い間はプレースホルダを出す（画面は先に表示する）
+  const 数値 = (v: string | number | undefined, ready: boolean) =>
+    ready ? String(v) : "—";
 
-  if (error) {
-    return (
-      <AppShell current="dashboard" title="ダッシュボード">
-        <div className="flex-1 flex items-center justify-center px-6 py-20">
-          <div className="max-w-md text-center space-y-4">
-            <p className="text-red-500">エラー: {error}</p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              ログイン情報が無効な可能性があります。サイドバーで別のアカウントに切り替えるか、ログインし直してください。
-            </p>
-            <a href="/" className="inline-block bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-full font-bold text-sm">
-              ログインし直す
-            </a>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
+  const カード = [
+    { label: "フォロワー", value: 数値(user?.follower_count?.toLocaleString(), !!user) },
+    { label: "動画数", value: 数値((user?.video_count ?? videos.length)?.toLocaleString(), !!user) },
+    { label: "総再生数", value: 数値(合計("view_count"), videos.length > 0 || !読込中) },
+    { label: "総いいね数", value: 数値(合計("like_count"), videos.length > 0 || !読込中) },
+  ];
 
   return (
     <AppShell current="dashboard" title="ダッシュボード">
-      {user && (
-        <section className="px-8 py-8 border-b border-gray-200 dark:border-gray-800">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <AccountAvatar src={user.avatar_url} name={user.display_name} size={40} />
-              <div>
-                <p className="font-bold">{user.display_name}</p>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">TikTokアカウント</p>
-              </div>
+      <section className="px-8 py-8 border-b border-gray-200 dark:border-gray-800">
+        <div className="flex items-center justify-between mb-4 gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <AccountAvatar src={表示アバター} name={表示名} size={40} />
+            <div className="min-w-0">
+              <p className="font-bold truncate">{表示名}</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
+                TikTokアカウント
+                {読込中 && <span className="ml-2 text-xs text-gray-400">読み込み中...</span>}
+              </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white text-sm border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-full transition"
-            >
-              ログアウト
-            </button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { label: "フォロワー", value: user.follower_count?.toLocaleString() ?? "-" },
-              { label: "動画数", value: (user.video_count ?? videos.length).toLocaleString() },
-              { label: "総再生数", value: videos.reduce((s, v) => s + (v.view_count || 0), 0).toLocaleString() },
-              { label: "総いいね数", value: videos.reduce((s, v) => s + (v.like_count || 0), 0).toLocaleString() },
-            ].map((card) => (
-              <div key={card.label} className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5 text-center">
-                <p className="text-3xl font-bold">{card.value}</p>
-                <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{card.label}</p>
-              </div>
-            ))}
+          <button
+            onClick={handleLogout}
+            className="shrink-0 text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white text-sm border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-full transition"
+          >
+            ログアウト
+          </button>
+        </div>
+
+        {要再ログイン && (
+          <div className="mb-4 bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-300 dark:border-yellow-800 rounded-xl px-4 py-3 text-sm text-yellow-800 dark:text-yellow-300 flex items-center justify-between gap-4 flex-wrap">
+            <span>🔑 このアカウントのログイン情報が無効です。サイドバーで切り替えるか、ログインし直してください。</span>
+            <a href="/" className="underline font-bold whitespace-nowrap">ログインし直す</a>
           </div>
-        </section>
-      )}
+        )}
+        {エラー && !要再ログイン && (
+          <div className="mb-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-600 dark:text-red-400 flex items-center justify-between gap-4 flex-wrap">
+            <span>データを取得できませんでした：{エラー}</span>
+            <a href="/" className="underline font-bold whitespace-nowrap">ログインし直す</a>
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {カード.map((card) => (
+            <div key={card.label} className="bg-gray-50 dark:bg-gray-900 rounded-xl p-5 text-center">
+              <p className={`text-3xl font-bold tabular-nums ${card.value === "—" ? "text-gray-300 dark:text-gray-700" : ""}`}>
+                {card.value}
+              </p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{card.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <section className="px-8 py-8 flex-1">
         <h2 className="text-xl font-bold mb-6">動画一覧</h2>
-        {videos.length === 0 ? (
+        {読込中 ? (
+          // 読み込み中はスケルトンを表示（画面が空にならないように）
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="bg-gray-50 dark:bg-gray-900 rounded-xl overflow-hidden animate-pulse">
+                <div className="w-full h-48 bg-gray-200 dark:bg-gray-800"></div>
+                <div className="p-4 space-y-3">
+                  <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded w-1/2"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : videos.length === 0 ? (
           <p className="text-gray-500 dark:text-gray-400">動画が見つかりませんでした</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
