@@ -32,12 +32,15 @@ export default function DashboardPage() {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [要再ログイン, set要再ログイン] = useState(false);
 
   useEffect(() => {
     (async () => {
       const token = await getValidAccessToken();
       if (!token) {
-        router.push("/");
+        // 無言でログイン画面へ飛ばさず、理由を表示して再ログインを促す
+        set要再ログイン(true);
+        setLoading(false);
         return;
       }
       const { access_token, open_id } = token;
@@ -88,16 +91,44 @@ export default function DashboardPage() {
     );
   }
 
+  if (要再ログイン) {
+    return (
+      <AppShell current="dashboard" title="ダッシュボード">
+        <div className="flex-1 flex items-center justify-center px-6 py-20">
+          <div className="max-w-md text-center bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-300 dark:border-yellow-800 rounded-xl p-8 space-y-4">
+            <p className="text-4xl">🔑</p>
+            <p className="font-bold text-lg">再ログインが必要です</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+              このアカウントのログイン情報の有効期限が切れているか、無効になっています。
+              サイドバーから別のアカウントに切り替えるか、ログインし直してください。
+            </p>
+            <a
+              href="/"
+              className="inline-block bg-black dark:bg-white text-white dark:text-black rounded-full px-8 py-3 text-sm font-bold hover:opacity-80 transition"
+            >
+              ログインし直す
+            </a>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
   if (error) {
     return (
-      <main className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">エラー: {error}</p>
-          <button onClick={() => router.push("/")} className="bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-full font-bold">
-            トップに戻る
-          </button>
+      <AppShell current="dashboard" title="ダッシュボード">
+        <div className="flex-1 flex items-center justify-center px-6 py-20">
+          <div className="max-w-md text-center space-y-4">
+            <p className="text-red-500">エラー: {error}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              ログイン情報が無効な可能性があります。サイドバーで別のアカウントに切り替えるか、ログインし直してください。
+            </p>
+            <a href="/" className="inline-block bg-black dark:bg-white text-white dark:text-black px-6 py-2 rounded-full font-bold text-sm">
+              ログインし直す
+            </a>
+          </div>
         </div>
-      </main>
+      </AppShell>
     );
   }
 
