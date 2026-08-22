@@ -137,17 +137,13 @@ export default function Sidebar({ current }: { current?: Page }) {
               }`}
             >
               <AccountAvatar src={a.avatar_url} name={a.display_name || a.open_id} size={24} />
-              <span className="text-sm flex-1 min-w-0 truncate group-hover:hidden">
+              <span className="text-sm flex-1 min-w-0 truncate">
                 {a.display_name || a.open_id.slice(0, 8)}
               </span>
-              {a.open_id === activeId && (
-                <span className="text-[10px] text-green-500 group-hover:hidden">●</span>
-              )}
-              {/* マウスを乗せると「ログアウト」を表示 */}
+              {a.open_id === activeId && <span className="text-[10px] text-green-500">●</span>}
               <button
                 onClick={(e) => handleRemove(e, a.open_id)}
-                className="hidden group-hover:block flex-1 text-right text-[11px] text-gray-500 hover:text-red-500 whitespace-nowrap"
-                title="このアカウントの接続を解除します"
+                className="text-[10px] text-gray-400 hover:text-red-500 whitespace-nowrap shrink-0"
               >
                 ログアウト
               </button>
