@@ -92,7 +92,8 @@ export default function Sidebar({ current }: { current?: Page }) {
       {/* ロゴ */}
       <a href="/dashboard" className="flex items-center gap-3 px-2 pt-1">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="Poston" className="w-9 h-9 rounded-xl" />
+        {/* 白背景でも輪郭が見えるよう枠線をつける */}
+        <img src="/logo.png" alt="Poston" className="w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700" />
         <div>
           <div className="font-bold text-lg leading-none">Poston</div>
           <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">TikTok運用ダッシュボード</div>
@@ -144,8 +145,8 @@ export default function Sidebar({ current }: { current?: Page }) {
               {a.open_id === activeId && <span className="text-[10px] text-green-500">●</span>}
               <button
                 onClick={(e) => handleRemove(e, a.open_id)}
-                className="text-gray-400 hover:text-red-500 text-xs opacity-0 group-hover:opacity-100 transition"
-                title="このアカウントを削除"
+                className="text-gray-400 hover:text-red-500 text-xs transition"
+                title="このアカウントの接続を解除（ログアウト）"
               >
                 ✕
               </button>
