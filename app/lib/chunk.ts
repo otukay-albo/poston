@@ -5,22 +5,27 @@
 // - 動画は最大4GB・最大1000チャンク
 
 export const MAX_VIDEO_BYTES = 4 * 1024 * 1024 * 1024; // 4GB
-const MIN_CHUNK = 5 * 1024 * 1024; // 5MB
-const CHUNK = 50 * 1024 * 1024; // 分割時のチャンクサイズ（64MB上限に対し余裕を持たせる）
+const MIN_CHUNK = 5 * 1024 * 1024; // 5MB（APIの下限）
+const MAX_CHUNK = 60 * 1024 * 1024; // 64MB上限に対し余裕を持たせた分割単位
 
 export interface ChunkPlan {
   chunk_size: number;
   total_chunk_count: number;
 }
 
+// 動画サイズからチャンク構成を決める。
+// 1チャンクで送れる場合は chunk_size = video_size（APIは単一チャンク時に
+// 両者の一致を期待する）。超える場合は動画を均等に割り、
+// total_chunk_count は必ず floor(video_size / chunk_size) と整合させる。
 export function planChunks(video_size: number): ChunkPlan {
-  // 64MB以下は1回で送れる（chunk_sizeが上限内に収まる）
-  if (video_size <= 64 * 1024 * 1024) {
+  if (video_size <= MAX_CHUNK) {
     return { chunk_size: video_size, total_chunk_count: 1 };
   }
-  // 64MB超は分割。最終チャンクが余りを含む（chunk_size超過が許容される）
-  const total = Math.max(1, Math.floor(video_size / CHUNK));
-  return { chunk_size: CHUNK, total_chunk_count: total };
+  const n = Math.ceil(video_size / MAX_CHUNK); // 必要なチャンク数
+  let chunk_size = Math.floor(video_size / n); // 均等割り（端数は最終チャンクへ）
+  if (chunk_size < MIN_CHUNK) chunk_size = MIN_CHUNK;
+  const total_chunk_count = Math.max(1, Math.floor(video_size / chunk_size));
+  return { chunk_size, total_chunk_count };
 }
 
 // 各チャンクのバイト範囲を返す（最終チャンクは末尾まで含む）
@@ -35,4 +40,4 @@ export function chunkRanges(video_size: number, plan: ChunkPlan): { start: numbe
   return ranges;
 }
 
-export { MIN_CHUNK };
+export { MIN_CHUNK, MAX_CHUNK };
