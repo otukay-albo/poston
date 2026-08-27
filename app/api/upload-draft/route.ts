@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
       {
         error: initData.error.message || "下書きの初期化に失敗しました",
         code: initData.error.code,
+        // 原因切り分け用に、実際に送った値を返す
+        sent: { video_size, chunk_size: plan.chunk_size, total_chunk_count: plan.total_chunk_count },
         detail: initData.error,
       },
       { status: 400 }

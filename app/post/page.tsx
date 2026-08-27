@@ -186,7 +186,11 @@ export default function 投稿ページ() {
       const initData = await initRes.json();
       if (!initRes.ok || initData.error) {
         const codeStr = initData.code ? `［${initData.code}］` : "";
-        setエラー((initData.error || `${下書き ? "下書き送信" : "投稿"}の初期化に失敗しました (${initRes.status})`) + codeStr);
+        // 原因切り分けのため、送信した値も表示する
+        const sent = initData.sent
+          ? `\n送信値: 動画=${(initData.sent.video_size / 1024 / 1024).toFixed(2)}MB (${initData.sent.video_size}B) / chunk=${initData.sent.chunk_size}B / 個数=${initData.sent.total_chunk_count}`
+          : "";
+        setエラー((initData.error || `${下書き ? "下書き送信" : "投稿"}の初期化に失敗しました (${initRes.status})`) + codeStr + sent);
         set投稿中(false);
         return;
       }
@@ -660,7 +664,7 @@ export default function 投稿ページ() {
             </div>
 
             {エラー && (
-              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm">
+              <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm whitespace-pre-wrap break-all">
                 {エラー}
               </div>
             )}
