@@ -8,6 +8,7 @@ import ScheduleCalendar from "../components/ScheduleCalendar";
 import { getValidAccessToken, clearToken, setAccountProfile } from "../lib/tiktokToken";
 import { listSchedule, addSchedule, type ScheduledPost } from "../lib/schedule";
 import { laDefaultDateTime } from "../lib/latime";
+import { chunkRanges } from "../lib/chunk";
 
 const 公開設定ラベル: Record<string, string> = {
   PUBLIC_TO_EVERYONE: "全員に公開",
@@ -38,6 +39,7 @@ export default function 投稿ページ() {
   const [自社ブランド, set自社ブランド] = useState(false);
   const [タイアップ, setタイアップ] = useState(false);
   const [投稿中, set投稿中] = useState(false);
+  const [進捗, set進捗] = useState("");
   const [エラー, setエラー] = useState("");
   const [アカウント名, setアカウント名] = useState("");
   const [アバター, setアバター] = useState("");
@@ -190,20 +192,34 @@ export default function 投稿ページ() {
       }
 
       // ステップ2: 動画をTikTokへ直接アップロード（Vercelを経由しない）
-      const putRes = await fetch(initData.upload_url, {
-        method: "PUT",
-        headers: {
-          // ファイルの実際の形式に合わせる（MP4 / MOV 両対応）
-          "Content-Type": 動画ファイル.type || "video/mp4",
-          "Content-Range": `bytes 0-${動画ファイル.size - 1}/${動画ファイル.size}`,
-        },
-        body: 動画ファイル,
-      });
-      if (!putRes.ok) {
-        setエラー(`動画のアップロードに失敗しました (${putRes.status})`);
-        set投稿中(false);
-        return;
+      // TikTokの分割ルールに従い、必要なら複数チャンクを順番に送る
+      const size = 動画ファイル.size;
+      const plan = {
+        chunk_size: initData.chunk_size || size,
+        total_chunk_count: initData.total_chunk_count || 1,
+      };
+      const ranges = chunkRanges(size, plan);
+      const contentType = 動画ファイル.type || "video/mp4";
+
+      for (let i = 0; i < ranges.length; i++) {
+        const { start, end } = ranges[i];
+        if (ranges.length > 1) set進捗(`アップロード中 ${i + 1}/${ranges.length}`);
+        const putRes = await fetch(initData.upload_url, {
+          method: "PUT",
+          headers: {
+            "Content-Type": contentType,
+            "Content-Range": `bytes ${start}-${end}/${size}`,
+          },
+          body: 動画ファイル.slice(start, end + 1),
+        });
+        if (!putRes.ok) {
+          setエラー(`動画のアップロードに失敗しました (${putRes.status})`);
+          set進捗("");
+          set投稿中(false);
+          return;
+        }
       }
+      set進捗("");
 
       setステップ("完了");
     } catch (e) {
@@ -678,7 +694,7 @@ export default function 投稿ページ() {
                 disabled={投稿中}
                 className="flex-1 bg-black dark:bg-white text-white dark:text-black rounded-full py-3 text-sm font-bold disabled:opacity-30 hover:opacity-80 transition"
               >
-                {投稿中 ? "送信中..."
+                {投稿中 ? (進捗 || "送信中...")
                   : 投稿タイミング === "schedule" ? "予約を保存する"
                   : 投稿タイミング === "draft" ? "TikTokの下書きに送る"
                   : "TikTokに投稿する"}
