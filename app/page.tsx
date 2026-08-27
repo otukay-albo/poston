@@ -35,9 +35,11 @@ export default function Home() {
       process.env.NEXT_PUBLIC_REDIRECT_URI || "https://poston-app-five.vercel.app/callback";
     // 要求するスコープ。サンドボックス等で構成が違う場合は
     // 環境変数 NEXT_PUBLIC_TIKTOK_SCOPES で上書きできる
+    // video.upload（下書き送信）はバンドルされていても明示的に要求しないと
+    // 付与されないため、必ず含める
     const scope =
       process.env.NEXT_PUBLIC_TIKTOK_SCOPES ||
-      "user.info.basic,user.info.stats,video.list,video.publish";
+      "user.info.basic,user.info.stats,video.list,video.publish,video.upload";
 
     const authUrl =
       `https://www.tiktok.com/v2/auth/authorize/?` +
