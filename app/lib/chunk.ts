@@ -6,7 +6,11 @@
 
 export const MAX_VIDEO_BYTES = 4 * 1024 * 1024 * 1024; // 4GB
 const MIN_CHUNK = 5 * 1024 * 1024; // 5MB（APIの下限）
-const MAX_CHUNK = 60 * 1024 * 1024; // 64MB上限に対し余裕を持たせた分割単位
+const SINGLE_MAX = 64 * 1024 * 1024; // 1チャンクで送れる上限
+// 分割時のチャンクサイズ。仕様上は64MBまで許容されるが、
+// 大きな値だとTikTok側に invalid_params で拒否されるため
+// 実績のある10MB単位で分割する
+const SPLIT_CHUNK = 10 * 1024 * 1024;
 
 export interface ChunkPlan {
   chunk_size: number;
@@ -18,12 +22,12 @@ export interface ChunkPlan {
 // 両者の一致を期待する）。超える場合は動画を均等に割り、
 // total_chunk_count は必ず floor(video_size / chunk_size) と整合させる。
 export function planChunks(video_size: number): ChunkPlan {
-  if (video_size <= MAX_CHUNK) {
+  // 1チャンクで送れるサイズはそのまま（chunk_size = video_size）
+  if (video_size <= SINGLE_MAX) {
     return { chunk_size: video_size, total_chunk_count: 1 };
   }
-  const n = Math.ceil(video_size / MAX_CHUNK); // 必要なチャンク数
-  let chunk_size = Math.floor(video_size / n); // 均等割り（端数は最終チャンクへ）
-  if (chunk_size < MIN_CHUNK) chunk_size = MIN_CHUNK;
+  // 超える場合は10MB単位で分割し、端数は最終チャンクが吸収する
+  const chunk_size = SPLIT_CHUNK;
   const total_chunk_count = Math.max(1, Math.floor(video_size / chunk_size));
   return { chunk_size, total_chunk_count };
 }
@@ -40,4 +44,4 @@ export function chunkRanges(video_size: number, plan: ChunkPlan): { start: numbe
   return ranges;
 }
 
-export { MIN_CHUNK, MAX_CHUNK };
+export { MIN_CHUNK, SINGLE_MAX, SPLIT_CHUNK };
