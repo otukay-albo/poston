@@ -120,25 +120,42 @@ export default function AnalyticsPage() {
       .finally(() => setLoading(false));
   }, [analyticsNames]);
 
-  const filtered = useMemo(() => {
-    const from = new Date(dateFrom.replace(/\//g, "-") + "T00:00:00");
-    const to = new Date(dateTo.replace(/\//g, "-") + "T23:59:59");
-    return rows.filter((r) => {
-      const d = new Date(r.取得日時);
-      return d >= from && d <= to;
-    });
-  }, [rows, dateFrom, dateTo]);
-
-  const latestByVideo = useMemo(() => {
+  // 同じ動画が何度も収集されるため、動画ごとに最新のスナップショットだけを残す
+  const latestAll = useMemo(() => {
     const map = new Map<string, Row>();
-    filtered.forEach((r) => {
+    rows.forEach((r) => {
       const existing = map.get(r.動画ID);
       if (!existing || new Date(r.取得日時) > new Date(existing.取得日時)) {
         map.set(r.動画ID, r);
       }
     });
     return Array.from(map.values());
-  }, [filtered]);
+  }, [rows]);
+
+  // 期間は「動画を投稿した日」で絞り込む（データを収集した日ではない）。
+  // 収集日で絞ると、どの期間を選んでも最新スナップショットが同じになり
+  // 数値が変わらないため。
+  const latestByVideo = useMemo(() => {
+    const from = new Date(dateFrom.replace(/\//g, "-") + "T00:00:00");
+    const to = new Date(dateTo.replace(/\//g, "-") + "T23:59:59");
+    return latestAll.filter((r) => {
+      if (!r.投稿日時) return 期間プリセット === "全期間"; // 投稿日不明は全期間のみ対象
+      const d = new Date(r.投稿日時);
+      return d >= from && d <= to;
+    });
+  }, [latestAll, dateFrom, dateTo, 期間プリセット]);
+
+  // データが存在する投稿日の範囲（期間外を選んだときの案内に使う）
+  const データ範囲 = useMemo(() => {
+    const ds = latestAll
+      .map((r) => r.投稿日時)
+      .filter(Boolean)
+      .map((s) => new Date(s as string))
+      .sort((a, b) => a.getTime() - b.getTime());
+    if (ds.length === 0) return null;
+    const f = (d: Date) => d.toLocaleDateString("ja-JP", { year: "numeric", month: "numeric", day: "numeric" });
+    return { from: f(ds[0]), to: f(ds[ds.length - 1]) };
+  }, [latestAll]);
 
   const summary = useMemo(() => {
     const totalViews = latestByVideo.reduce((s, r) => s + r.再生数, 0);
@@ -155,16 +172,6 @@ export default function AnalyticsPage() {
   }, [latestByVideo]);
 
   // ===== 集計ビュー（月別/週別/日別）: 投稿日時ベース・全取得データ対象 =====
-  const latestAll = useMemo(() => {
-    const map = new Map<string, Row>();
-    rows.forEach((r) => {
-      const existing = map.get(r.動画ID);
-      if (!existing || new Date(r.取得日時) > new Date(existing.取得日時)) {
-        map.set(r.動画ID, r);
-      }
-    });
-    return Array.from(map.values());
-  }, [rows]);
 
   const median = (nums: number[]) => {
     if (nums.length === 0) return 0;
@@ -206,22 +213,21 @@ export default function AnalyticsPage() {
       }));
   }, [latestAll, 集計粒度]);
 
+  // グラフも「投稿日」を横軸にする（期間の絞り込みと基準を揃える）
   const chartData = useMemo(() => {
     const metric = METRICS[metricIdx].key as keyof Row;
-    const from = new Date(dateFrom.replace(/\//g, "-") + "T00:00:00");
-    const to = new Date(dateTo.replace(/\//g, "-") + "T23:59:59");
-    const dayMap = new Map<string, number[]>();
-    rows.forEach((r) => {
-      const d = new Date(r.取得日時);
-      if (d < from || d > to) return;
+    const dayMap = new Map<string, { t: number; vals: number[] }>();
+    latestByVideo.forEach((r) => {
+      if (!r.投稿日時) return;
+      const d = new Date(r.投稿日時);
       const dateStr = d.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" });
-      if (!dayMap.has(dateStr)) dayMap.set(dateStr, []);
-      dayMap.get(dateStr)!.push(Number(r[metric]) || 0);
+      if (!dayMap.has(dateStr)) dayMap.set(dateStr, { t: d.getTime(), vals: [] });
+      dayMap.get(dateStr)!.vals.push(Number(r[metric]) || 0);
     });
     return Array.from(dayMap.entries())
-      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
-      .map(([date, vals]) => ({ date, value: vals.reduce((s, v) => s + v, 0) / vals.length }));
-  }, [rows, dateFrom, dateTo, metricIdx]);
+      .sort((a, b) => a[1].t - b[1].t)
+      .map(([date, { vals }]) => ({ date, value: vals.reduce((s, v) => s + v, 0) / vals.length }));
+  }, [latestByVideo, metricIdx]);
 
   const videoList = useMemo(() => [...latestByVideo].sort((a, b) => b.再生数 - a.再生数), [latestByVideo]);
   const isEngRate = METRICS[metricIdx].key === "エンゲージメント率(%)";
@@ -326,6 +332,18 @@ export default function AnalyticsPage() {
                   className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5" />
               </div>
             )}
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">投稿日で絞り込み</span>
+          </div>
+        )}
+
+        {/* 期間内に投稿がない場合は、黙って0を並べず理由を示す */}
+        {メインタブ === "overview" && !loading && latestByVideo.length === 0 && latestAll.length > 0 && (
+          <div className="mb-4 bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-300 dark:border-yellow-800 rounded-xl px-4 py-3 text-sm text-yellow-800 dark:text-yellow-300">
+            この期間に投稿された動画はありません。
+            {データ範囲 && <>（データがあるのは {データ範囲.from} 〜 {データ範囲.to} の投稿）</>}
+            <button onClick={() => applyPreset("全期間")} className="underline font-bold ml-2">
+              全期間で見る
+            </button>
           </div>
         )}
 
