@@ -36,6 +36,9 @@ const ymd = (d: Date) => {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 };
+// 取得結果の一時保存（タブ切替のたびに待たされないようにする）
+const CACHE_PREFIX = "poston_analytics_v1:";
+
 const daysAgoYMD = (days: number) => {
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -73,6 +76,12 @@ export default function AnalyticsPage() {
           .map((r: { account: string; inserted?: number; error?: string }) =>
             r.error ? `${r.account}: ${r.error}` : `${r.account}: ${r.inserted}件`)
           .join(" ／ ");
+        // 新しいデータを取り直すため、保存しておいた結果は破棄する
+        try {
+          Object.keys(sessionStorage)
+            .filter((k) => k.startsWith(CACHE_PREFIX))
+            .forEach((k) => sessionStorage.removeItem(k));
+        } catch { /* 失敗しても再読み込みで取り直される */ }
         set収集Msg(`✅ 収集完了（${summary}）。反映のため再読み込みします...`);
         setTimeout(() => window.location.reload(), 1800);
       }
@@ -106,14 +115,33 @@ export default function AnalyticsPage() {
   };
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
+  const [更新中, set更新中] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!analyticsNames || analyticsNames.length === 0) { setRows([]); return; }
-    setLoading(true);
     setError("");
-    setRows([]);
-    // 複数アカウント（全アカウント合計）にも対応：並列取得してマージ
+
+    // 1) 前回の結果が残っていれば即座に表示する（取得に約1.5秒かかるため、
+    //    画面を空にして待たせない）。裏で最新を取り直して差し替える。
+    const key = CACHE_PREFIX + analyticsNames.join("|");
+    let 即表示できた = false;
+    try {
+      const cached = sessionStorage.getItem(key);
+      if (cached) {
+        const parsed = JSON.parse(cached) as Row[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setRows(parsed);
+          即表示できた = true;
+        }
+      }
+    } catch { /* キャッシュが壊れていても通常取得に進む */ }
+
+    if (!即表示できた) setRows([]);
+    setLoading(!即表示できた);   // キャッシュがある時は全画面ローディングにしない
+    set更新中(即表示できた);      // 代わりに小さく「更新中」を出す
+
+    // 2) 複数アカウント（全アカウント合計）にも対応：並列取得してマージ
     Promise.all(
       analyticsNames.map((n) =>
         fetch(`/api/analytics?account=${encodeURIComponent(n)}`)
@@ -122,9 +150,13 @@ export default function AnalyticsPage() {
           .catch(() => [])
       )
     )
-      .then((results) => setRows(results.flat()))
+      .then((results) => {
+        const merged = results.flat();
+        setRows(merged);
+        try { sessionStorage.setItem(key, JSON.stringify(merged)); } catch { /* 容量超過は無視 */ }
+      })
       .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); set更新中(false); });
   }, [analyticsNames]);
 
   // 同じ動画が何度も収集されるため、動画ごとに最新のスナップショットだけを残す
@@ -357,6 +389,7 @@ export default function AnalyticsPage() {
             <span className="text-[11px] text-gray-400 dark:text-gray-500">
               投稿日 {期間範囲.from.toLocaleDateString("ja-JP")} 〜 {期間範囲.to.toLocaleDateString("ja-JP")} で絞り込み
               （{latestByVideo.length}本）
+              {更新中 && <span className="ml-1.5 text-gray-400">・最新を確認中...</span>}
             </span>
           </div>
         )}
