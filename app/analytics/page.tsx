@@ -30,15 +30,24 @@ interface Row {
   "動画時間(秒)": string | number;
 }
 
+// 端末のローカル日付で YYYY-MM-DD を作る。
+// toISOString()はUTCになるため、日本時間の朝9時前は「昨日」になってしまう。
+const ymd = (d: Date) => {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+const daysAgoYMD = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return ymd(d);
+};
+
 export default function AnalyticsPage() {
   const [analyticsNames, setAnalyticsNames] = useState<string[] | null>(null);
-  const [dateFrom, setDateFrom] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 30);
-    return d.toISOString().split("T")[0];
-  });
-  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split("T")[0]);
+  const [dateFrom, setDateFrom] = useState(() => daysAgoYMD(29));
+  const [dateTo, setDateTo] = useState(() => ymd(new Date()));
   const [期間プリセット, set期間プリセット] = useState("30日");
+  const 今日 = ymd(new Date()); // 日付入力の上限（未来日を選べないように）
   const [metricIdx, setMetricIdx] = useState(0);
   const [メインタブ, setメインタブ] = useState<"overview" | "aggregate" | "trend">("overview");
   const [集計粒度, set集計粒度] = useState<"月別" | "週別" | "日別">("週別");
@@ -85,16 +94,14 @@ export default function AnalyticsPage() {
   const applyPreset = (label: string) => {
     set期間プリセット(label);
     if (label === "カスタム") return; // 現在の日付範囲を保持したまま手動選択へ
-    const toStr = new Date().toISOString().split("T")[0];
+    const toStr = ymd(new Date());
     if (label === "全期間") {
       setDateFrom("2020-01-01");
       setDateTo(toStr);
       return;
     }
     const days = ({ "1日": 1, "3日": 3, "7日": 7, "30日": 30 } as Record<string, number>)[label] ?? 30;
-    const from = new Date();
-    from.setDate(from.getDate() - (days - 1));
-    setDateFrom(from.toISOString().split("T")[0]);
+    setDateFrom(daysAgoYMD(days - 1));
     setDateTo(toStr);
   };
   const [rows, setRows] = useState<Row[]>([]);
@@ -135,15 +142,26 @@ export default function AnalyticsPage() {
   // 期間は「動画を投稿した日」で絞り込む（データを収集した日ではない）。
   // 収集日で絞ると、どの期間を選んでも最新スナップショットが同じになり
   // 数値が変わらないため。
+  // 日付が未入力・不正でも「全部0」にならないよう安全側に倒す
+  const 期間範囲 = useMemo(() => {
+    const parse = (s: string, suffix: string) => {
+      const d = new Date(s.replace(/\//g, "-") + suffix);
+      return isNaN(d.getTime()) ? null : d;
+    };
+    let from = parse(dateFrom, "T00:00:00") ?? new Date("2020-01-01T00:00:00");
+    let to = parse(dateTo, "T23:59:59") ?? new Date();
+    if (from > to) [from, to] = [to, from]; // 逆順に入力されても動くように
+    return { from, to };
+  }, [dateFrom, dateTo]);
+
   const latestByVideo = useMemo(() => {
-    const from = new Date(dateFrom.replace(/\//g, "-") + "T00:00:00");
-    const to = new Date(dateTo.replace(/\//g, "-") + "T23:59:59");
+    const { from, to } = 期間範囲;
     return latestAll.filter((r) => {
       if (!r.投稿日時) return 期間プリセット === "全期間"; // 投稿日不明は全期間のみ対象
       const d = new Date(r.投稿日時);
       return d >= from && d <= to;
     });
-  }, [latestAll, dateFrom, dateTo, 期間プリセット]);
+  }, [latestAll, 期間範囲, 期間プリセット]);
 
   // データが存在する投稿日の範囲（期間外を選んだときの案内に使う）
   const データ範囲 = useMemo(() => {
@@ -325,14 +343,21 @@ export default function AnalyticsPage() {
             </div>
             {期間プリセット === "カスタム" && (
               <div className="flex items-center gap-2 text-sm">
-                <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+                {/* 未来日は選べないように max を今日に固定し、開始>終了も防ぐ */}
+                <input type="date" value={dateFrom} max={dateTo || 今日}
+                  onChange={(e) => setDateFrom(e.target.value)}
                   className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5" />
                 <span className="text-gray-400">〜</span>
-                <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+                <input type="date" value={dateTo} min={dateFrom} max={今日}
+                  onChange={(e) => setDateTo(e.target.value)}
                   className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5" />
               </div>
             )}
-            <span className="text-[11px] text-gray-400 dark:text-gray-500">投稿日で絞り込み</span>
+            {/* 実際に適用されている範囲を明示（反映されているか一目で分かるように） */}
+            <span className="text-[11px] text-gray-400 dark:text-gray-500">
+              投稿日 {期間範囲.from.toLocaleDateString("ja-JP")} 〜 {期間範囲.to.toLocaleDateString("ja-JP")} で絞り込み
+              （{latestByVideo.length}本）
+            </span>
           </div>
         )}
 
