@@ -66,7 +66,7 @@ export default function AnalyticsAccountBar({ onResolve }: { onResolve: (names: 
     return (
       <span className="text-sm text-gray-600 dark:text-gray-300">
         分析するにはログインしてください。
-        <a href="/" className="underline ml-1 text-black dark:text-white">ログイン</a>
+        <a href="/login" className="underline ml-1 text-black dark:text-white">ログイン</a>
       </span>
     );
   }

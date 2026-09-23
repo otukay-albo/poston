@@ -149,7 +149,7 @@ export default function Sidebar({ current }: { current?: Page }) {
               </button>
             </div>
           ))}
-          <a href="/" className="block px-3 py-2 mt-1 text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition">
+          <a href="/login" className="block px-3 py-2 mt-1 text-sm text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition">
             ＋ アカウントを追加
           </a>
         </div>

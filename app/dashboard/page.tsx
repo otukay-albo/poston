@@ -133,13 +133,13 @@ export default function DashboardPage() {
         {要再ログイン && (
           <div className="mb-4 bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-300 dark:border-yellow-800 rounded-xl px-4 py-3 text-sm text-yellow-800 dark:text-yellow-300 flex items-center justify-between gap-4 flex-wrap">
             <span>🔑 このアカウントのログイン情報が無効です。サイドバーで切り替えるか、ログインし直してください。</span>
-            <a href="/" className="underline font-bold whitespace-nowrap">ログインし直す</a>
+            <a href="/login" className="underline font-bold whitespace-nowrap">ログインし直す</a>
           </div>
         )}
         {エラー && !要再ログイン && (
           <div className="mb-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl px-4 py-3 text-sm text-red-600 dark:text-red-400 flex items-center justify-between gap-4 flex-wrap">
             <span>データを取得できませんでした：{エラー}</span>
-            <a href="/" className="underline font-bold whitespace-nowrap">ログインし直す</a>
+            <a href="/login" className="underline font-bold whitespace-nowrap">ログインし直す</a>
           </div>
         )}
 
