@@ -17,10 +17,10 @@ const 公開設定ラベル: Record<string, string> = {
   SELF_ONLY: "自分のみ（非公開）",
 };
 
-// TikTok Content Posting API の審査（App review）が未完了のため、
-// 投稿は「自分のみ（非公開）」に限定される。
-// 審査通過後に true にすると、アカウントが許可する他の公開範囲も選べるようになる。
-const 審査済み = false;
+// TikTok Content Posting API の監査は 2026-11-04 に承認済み（Approved）。
+// 「非公開アカウント＋自分のみ」の制限は解除され、公開範囲は
+// creator_info が返す選択肢（アカウント設定に依存）がそのまま使える。
+const 審査済み = true;
 
 type ステップ = "編集" | "確認" | "完了";
 
@@ -398,6 +398,11 @@ export default function 投稿ページ() {
               {!審査済み && (
                 <p className="text-xs text-gray-400 dark:text-gray-600 mt-2 leading-relaxed">
                   ※ TikTok審査前のため、①投稿アカウントを「非公開アカウント」に設定し、②公開範囲「自分のみ」を選択した場合のみ投稿できます。公開投稿には審査（App review）の通過が必要です。
+                </p>
+              )}
+              {審査済み && 公開設定候補.length === 1 && 公開設定候補[0] === "SELF_ONLY" && (
+                <p className="text-xs text-gray-400 dark:text-gray-600 mt-2 leading-relaxed">
+                  ※ このアカウントは「非公開アカウント」に設定されているため、公開範囲は「自分のみ」のみ選べます。公開投稿したい場合は、TikTokアプリの設定とプライバシーから非公開アカウントをオフにしてください。
                 </p>
               )}
             </div>
