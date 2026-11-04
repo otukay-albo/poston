@@ -5,9 +5,9 @@ import AppShell from "../components/AppShell";
 import AccountAvatar from "../components/AccountAvatar";
 import LaClock from "../components/LaClock";
 import ScheduleCalendar from "../components/ScheduleCalendar";
-import { getValidAccessToken, clearToken, setAccountProfile } from "../lib/tiktokToken";
+import { getValidAccessToken, clearToken, setAccountProfile, getTeamKey } from "../lib/tiktokToken";
 import { listSchedule, addSchedule, type ScheduledPost } from "../lib/schedule";
-import { laDefaultDateTime } from "../lib/latime";
+import { laDefaultDateTime, laToUTC } from "../lib/latime";
 import { chunkRanges } from "../lib/chunk";
 
 const 公開設定ラベル: Record<string, string> = {
@@ -131,19 +131,67 @@ export default function 投稿ページ() {
   const 投稿実行 = async () => {
     if (!動画ファイル) return;
 
-    // 「予約する」の場合はTikTokへ送信せず、予約カレンダーに登録する
-    // （自動投稿はTikTok審査の承認後に有効化）
+    // 「予約する」の場合は、動画をサーバーに預けて予約を登録する。
+    // 予約時刻にはブラウザが閉じているため、サーバー側が投稿を実行する。
     if (投稿タイミング === "schedule") {
-      addSchedule({
-        open_id: アカウントID,
-        account_name: アカウント名,
-        date: 予約日付,
-        time: 予約時刻,
-        title: タイトル,
-        status: "予約",
-      });
-      set予約一覧(listSchedule());
-      setステップ("完了");
+      const key = getTeamKey();
+      if (!key) {
+        setエラー("予約投稿にはチーム同期の設定が必要です。サイドバー左下の「チーム同期を設定」から設定してください。");
+        return;
+      }
+      set投稿中(true);
+      setエラー("");
+      try {
+        // 1) アップロード先を発行してもらう（Vercelを経由せず直接送るため）
+        set進捗("動画を保存中...");
+        const urlRes = await fetch("/api/schedule/upload-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-team-key": key },
+          body: JSON.stringify({ filename: 動画ファイル.name }),
+        });
+        const urlData = await urlRes.json();
+        if (!urlRes.ok) throw new Error(urlData.error || "保存先を用意できませんでした");
+
+        // 2) 動画をSupabase Storageへ直接アップロード
+        const up = await fetch(urlData.signedUrl, {
+          method: "PUT",
+          headers: { "Content-Type": 動画ファイル.type || "video/mp4" },
+          body: 動画ファイル,
+        });
+        if (!up.ok) throw new Error(`動画の保存に失敗しました (${up.status})`);
+
+        // 3) 予約を登録（LAの日時をUTCに変換して保存）
+        set進捗("予約を登録中...");
+        const run_at = laToUTC(予約日付, 予約時刻);
+        const res = await fetch("/api/schedule", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-team-key": key },
+          body: JSON.stringify({
+            open_id: アカウントID,
+            account_name: アカウント名,
+            run_at,
+            title: タイトル,
+            privacy_level: 公開設定,
+            disable_comment: !コメント許可 || コメント不可,
+            disable_duet: !デュエット許可 || デュエット不可,
+            disable_stitch: !スティッチ許可 || スティッチ不可,
+            brand_content_toggle: 商用開示 && タイアップ,
+            brand_organic_toggle: 商用開示 && 自社ブランド,
+            video_path: urlData.path,
+            video_size: 動画ファイル.size,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "予約の登録に失敗しました");
+
+        set予約一覧(listSchedule());
+        setステップ("完了");
+      } catch (e) {
+        setエラー(e instanceof Error ? e.message : String(e));
+      } finally {
+        set進捗("");
+        set投稿中(false);
+      }
       return;
     }
 
@@ -564,8 +612,15 @@ export default function 投稿ページ() {
                     </div>
                   </div>
                   <p className="text-xs text-gray-400 dark:text-gray-600 leading-relaxed">
-                    ※ 自動投稿はTikTok審査中のため、現在は予約カレンダーへの登録のみ行われます（動画ファイルは保存されません）。審査承認後に自動投稿が有効になります。
+                    ※ 動画はPostonに一時保存され、指定時刻になると自動でTikTokに投稿されます（投稿後に削除）。ブラウザを閉じていても実行されます。
                   </p>
+                  {/* サーバーの実行時間に収まらない大きさは、予約前に知らせる */}
+                  {動画ファイル && 動画ファイル.size > 60 * 1024 * 1024 && (
+                    <p className="text-xs text-yellow-700 dark:text-yellow-500 leading-relaxed bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-300 dark:border-yellow-800 rounded-lg p-3">
+                      ⚠️ この動画は {(動画ファイル.size / 1048576).toFixed(0)}MB あり、自動投稿が時間切れで失敗する可能性があります（目安は60MB以下）。
+                      書き出し設定でビットレートを下げるか、「今すぐ投稿」をご利用ください。
+                    </p>
+                  )}
                 </div>
               )}
               {投稿タイミング === "draft" && (

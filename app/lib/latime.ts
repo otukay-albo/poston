@@ -63,3 +63,36 @@ export function laDateLabelJa(date: Date = new Date()): string {
     weekday: "short",
   }).format(date);
 }
+
+// ロサンゼルス時間の「日付 + 時刻」を、実際のUTC時刻（ISO文字列）に変換する。
+// 予約投稿はLA時間で入力するが、サーバーはUTCで判定するため。
+// 夏時間(PDT/PST)の切り替わりも、その日のLAのオフセットを実測して吸収する。
+export function laToUTC(date: string, time: string): string {
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: LA_TZ,
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: false,
+  });
+
+  // ある瞬間において、LAがUTCから何ミリ秒遅れているか
+  const offsetAt = (instant: number): number => {
+    const p = Object.fromEntries(
+      fmt.formatToParts(new Date(instant)).filter((x) => x.type !== "literal").map((x) => [x.type, x.value])
+    ) as Record<string, string>;
+    const shown = Date.UTC(
+      Number(p.year), Number(p.month) - 1, Number(p.day),
+      Number(p.hour) % 24, Number(p.minute), Number(p.second)
+    );
+    return instant - shown;
+  };
+
+  const asUTC = Date.UTC(y, m - 1, d, hh, mm, 0);
+  // 1回目の概算では、夏時間の切替当日にオフセットが1時間ずれることがある。
+  // 求めた時刻で再度オフセットを測り直して補正する。
+  const guess = asUTC + offsetAt(asUTC);
+  return new Date(asUTC + offsetAt(guess)).toISOString();
+}
