@@ -33,7 +33,14 @@ create table scheduled_posts (
 create index scheduled_posts_due on scheduled_posts (status, run_at);
 ```
 
-※「Run without RLS」で実行してよい（アクセスはサーバー側のチームキーで制限している）。
+続けて、**必ず保護（RLS）を有効にする**。同じ SQL Editor で実行：
+
+```sql
+alter table scheduled_posts enable row level security;
+```
+
+これを忘れると、ブラウザに配信される公開キーだけで誰でもこのテーブルを読み書きできてしまう。
+Postonのサーバーは専用キー（`SUPABASE_SERVICE_ROLE_KEY`）でアクセスするため、有効にしても動作は変わらない。
 
 ---
 

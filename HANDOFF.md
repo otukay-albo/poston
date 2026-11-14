@@ -170,6 +170,16 @@ CRON_SECRET                     ← 定期実行の合言葉（cron-job.orgのx-
 GAS_API_KEY                     ← 旧収集用。現在は不要
 ```
 
+### データベースの保護（重要）
+Supabaseの全テーブル（`tiktok_accounts` / `scheduled_posts` / `video_stats`）は **RLSを有効**にしてあり、
+ブラウザに配信される公開キーでは読み書きできない。サーバーは専用キー（`SUPABASE_SERVICE_ROLE_KEY`）で
+アクセスする（`lib/supabaseAdmin.ts`）。**新しいテーブルを作るときは必ず `enable row level security` を実行する。**
+
+- 経緯：2026-11まではRLSなしで運用しており、公開キーだけでTikTokのアクセストークンを読める状態だった
+  （チームキーの保護はAPI経由のみで、DB直アクセスは防げていなかった）。2026-11-14に修正
+- 外からの確認：`/api/health` が `{"ok":true,"serverKey":true,"db":"ok"}` を返せば正常
+- ローカル開発でDBを使う場合は `.env.local` にも `SUPABASE_SERVICE_ROLE_KEY` が必要
+
 ### 取得できないデータ（調査済み・結論）
 保存数／平均視聴時間／フル視聴率／視聴者の性別・年齢・地域／国別リーチ／
 トラフィックソース／写真投稿のインサイト
