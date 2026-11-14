@@ -171,12 +171,16 @@ async function handle(req: NextRequest) {
     }
 
     // 3) 動画をTikTokへ送る（分割ルールに従って順番に）
+    // 保存したファイルの形式に合わせる（MOVをmp4として送ると処理に失敗することがある）
+    const ext = post.video_path.split(".").pop()?.toLowerCase();
+    const contentType =
+      ext === "mov" ? "video/quicktime" : ext === "webm" ? "video/webm" : "video/mp4";
     const buf = new Uint8Array(await blob.arrayBuffer());
     for (const { start, end } of chunkRanges(size, plan)) {
       const put = await fetch(initData.data.upload_url, {
         method: "PUT",
         headers: {
-          "Content-Type": "video/mp4",
+          "Content-Type": contentType,
           "Content-Range": `bytes ${start}-${end}/${size}`,
         },
         body: buf.slice(start, end + 1),
