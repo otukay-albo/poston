@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+// DBへのアクセスはサーバー専用キーで行う（テーブルはRLSで保護し、公開キーでは読み書きできない）
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 // 接続済みTikTokアカウント（トークン）のサーバー保存API。
 // どのブラウザ/PCからでも同じアカウント群を使えるようにする（チーム共有）。
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
   const denied = authorize(req);
   if (denied) return denied;
 
-  const { data, error } = await supabase.from("tiktok_accounts").select("*");
+  const { data, error } = await supabaseAdmin.from("tiktok_accounts").select("*");
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ accounts: data || [] });
 }
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "open_id と access_token は必須です" }, { status: 400 });
   }
 
-  const { error } = await supabase.from("tiktok_accounts").upsert(
+  const { error } = await supabaseAdmin.from("tiktok_accounts").upsert(
     {
       open_id: b.open_id,
       display_name: b.display_name ?? null,
@@ -73,7 +74,7 @@ export async function DELETE(req: NextRequest) {
   const { open_id } = await req.json();
   if (!open_id) return NextResponse.json({ error: "open_id は必須です" }, { status: 400 });
 
-  const { error } = await supabase.from("tiktok_accounts").delete().eq("open_id", open_id);
+  const { error } = await supabaseAdmin.from("tiktok_accounts").delete().eq("open_id", open_id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

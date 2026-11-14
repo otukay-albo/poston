@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+// DBへのアクセスはサーバー専用キーで行う（テーブルはRLSで保護し、公開キーでは読み書きできない）
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET(req: NextRequest) {
   const account = req.nextUrl.searchParams.get("account");
@@ -8,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "account is required" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("video_stats")
     .select("*")
     .eq("account_name", account)

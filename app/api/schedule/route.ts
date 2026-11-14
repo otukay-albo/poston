@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 // 予約投稿の一覧・作成・削除。
@@ -29,7 +28,7 @@ export async function GET(req: NextRequest) {
   const ng = guard(req);
   if (ng) return ng;
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("scheduled_posts")
     .select("*")
     .order("run_at", { ascending: true });
@@ -47,7 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "open_id と run_at は必須です" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("scheduled_posts")
     .insert({
       open_id: b.open_id,
@@ -79,7 +78,7 @@ export async function DELETE(req: NextRequest) {
   if (!id) return NextResponse.json({ error: "id は必須です" }, { status: 400 });
 
   // 予約を消すときは、保管していた動画も消す（容量を無駄にしないため）
-  const { data: row } = await supabase
+  const { data: row } = await supabaseAdmin
     .from("scheduled_posts")
     .select("video_path")
     .eq("id", id)
@@ -88,7 +87,7 @@ export async function DELETE(req: NextRequest) {
     await supabaseAdmin.storage.from("scheduled-videos").remove([row.video_path]);
   }
 
-  const { error } = await supabase.from("scheduled_posts").delete().eq("id", id);
+  const { error } = await supabaseAdmin.from("scheduled_posts").delete().eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

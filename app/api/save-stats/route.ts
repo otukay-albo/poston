@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+// DBへのアクセスはサーバー専用キーで行う（テーブルはRLSで保護し、公開キーでは読み書きできない）
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const API_KEY = process.env.GAS_API_KEY;
 
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
     fetched_at: r["取得日時"] ? new Date(String(r["取得日時"])).toISOString() : new Date().toISOString(),
   }));
 
-  const { error } = await supabase.from("video_stats").insert(records);
+  const { error } = await supabaseAdmin.from("video_stats").insert(records);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

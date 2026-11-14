@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse, after } from "next/server";
-import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { planChunks, chunkRanges } from "@/app/lib/chunk";
 
@@ -36,7 +35,7 @@ function authorized(req: NextRequest): boolean {
 
 // 失効間近ならリフレッシュして有効なアクセストークンを返す
 async function ensureToken(open_id: string): Promise<string | null> {
-  const { data: acc } = await supabase
+  const { data: acc } = await supabaseAdmin
     .from("tiktok_accounts")
     .select("*")
     .eq("open_id", open_id)
@@ -61,7 +60,7 @@ async function ensureToken(open_id: string): Promise<string | null> {
   const data = await res.json();
   if (data.error || !data.access_token) return null;
 
-  await supabase
+  await supabaseAdmin
     .from("tiktok_accounts")
     .update({
       access_token: data.access_token,
@@ -92,7 +91,7 @@ interface Due {
 // 失敗を記録する。試行回数は着手時（claim）に加算済みなので、ここでは増やさない。
 async function fail(id: string, attempts: number, message: string) {
   const over = attempts >= MAX_ATTEMPTS;
-  await supabase
+  await supabaseAdmin
     .from("scheduled_posts")
     .update({
       error: message,
@@ -110,7 +109,7 @@ async function fail(id: string, attempts: number, message: string) {
 async function claimNext(): Promise<Due | null> {
   for (let guard = 0; guard < 20; guard++) {
     // 初めての予約を優先し、再試行は後回しにする（問題のある1件が列を塞がないように）
-    const { data: rows } = await supabase
+    const { data: rows } = await supabaseAdmin
       .from("scheduled_posts")
       .select("*")
       .eq("status", "予約")
@@ -124,7 +123,7 @@ async function claimNext(): Promise<Due | null> {
     // 上限まで試しても完了の記録が無い＝毎回、時間切れで打ち切られている
     if (post.attempts >= MAX_ATTEMPTS) {
       const mb = post.video_size ? `${(post.video_size / 1048576).toFixed(0)}MB` : "サイズ不明";
-      await supabase
+      await supabaseAdmin
         .from("scheduled_posts")
         .update({
           status: "失敗",
@@ -135,7 +134,7 @@ async function claimNext(): Promise<Due | null> {
     }
 
     // 試行回数を条件付きで更新して確保する（同時に動いた別の実行と重複しないように）
-    const { data: claimed } = await supabase
+    const { data: claimed } = await supabaseAdmin
       .from("scheduled_posts")
       .update({
         attempts: post.attempts + 1,
@@ -157,7 +156,7 @@ async function handle(req: NextRequest) {
   }
 
   // 何件待っているかだけ数えて、すぐ応答する
-  const { count } = await supabase
+  const { count } = await supabaseAdmin
     .from("scheduled_posts")
     .select("id", { count: "exact", head: true })
     .eq("status", "予約")
@@ -256,7 +255,7 @@ async function processOne(post: Due): Promise<Record<string, unknown>> {
     }
 
     // 4) 投稿済みにして、保管していた動画を消す
-    await supabase
+    await supabaseAdmin
       .from("scheduled_posts")
       .update({ status: "投稿済み", posted_at: new Date().toISOString(), error: null })
       .eq("id", post.id);

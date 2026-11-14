@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+// DBへのアクセスはサーバー専用キーで行う（テーブルはRLSで保護し、公開キーでは読み書きできない）
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 // Poston自身によるデータ収集（GASの置き換え）。
 // チーム同期(tiktok_accounts)に登録された全アカウントの動画統計を
@@ -63,7 +64,7 @@ async function ensureToken(acc: AccountRow): Promise<string | null> {
   const data = await res.json();
   if (data.error || !data.access_token) return null;
 
-  await supabase
+  await supabaseAdmin
     .from("tiktok_accounts")
     .update({
       access_token: data.access_token,
@@ -99,7 +100,7 @@ async function handle(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  const { data: accounts, error: accErr } = await supabase.from("tiktok_accounts").select("*");
+  const { data: accounts, error: accErr } = await supabaseAdmin.from("tiktok_accounts").select("*");
   if (accErr) return NextResponse.json({ error: accErr.message }, { status: 500 });
   if (!accounts || accounts.length === 0) {
     return NextResponse.json({ ok: true, message: "チーム同期にアカウントが登録されていません", results: [] });
@@ -125,7 +126,7 @@ async function handle(req: NextRequest) {
       // 分析データ名が未設定なら表示名で自動設定（分析画面が自動で紐づくように）
       const account_name = acc.analytics_name || acc.display_name || acc.open_id.slice(0, 8);
       if (!acc.analytics_name) {
-        await supabase.from("tiktok_accounts").update({ analytics_name: account_name }).eq("open_id", acc.open_id);
+        await supabaseAdmin.from("tiktok_accounts").update({ analytics_name: account_name }).eq("open_id", acc.open_id);
       }
 
       const records = videos.map((v) => {
@@ -149,7 +150,7 @@ async function handle(req: NextRequest) {
       });
 
       if (records.length > 0) {
-        const { error } = await supabase.from("video_stats").insert(records);
+        const { error } = await supabaseAdmin.from("video_stats").insert(records);
         if (error) {
           results.push({ account: label, error: error.message });
           continue;
