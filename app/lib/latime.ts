@@ -96,3 +96,19 @@ export function laToUTC(date: string, time: string): string {
   const guess = asUTC + offsetAt(asUTC);
   return new Date(asUTC + offsetAt(guess)).toISOString();
 }
+
+// UTCの時刻（ISO文字列）を、ロサンゼルス時間の「日付・時刻」に変換する（laToUTCの逆）。
+export function utcToLA(iso: string): { date: string; time: string } {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: LA_TZ,
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    })
+      .formatToParts(new Date(iso))
+      .filter((x) => x.type !== "literal")
+      .map((x) => [x.type, x.value])
+  ) as Record<string, string>;
+  const hh = String(Number(p.hour) % 24).padStart(2, "0");
+  return { date: `${p.year}-${p.month}-${p.day}`, time: `${hh}:${p.minute}` };
+}

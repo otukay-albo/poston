@@ -6,8 +6,8 @@ import AccountAvatar from "../components/AccountAvatar";
 import LaClock from "../components/LaClock";
 import ScheduleCalendar from "../components/ScheduleCalendar";
 import { getValidAccessToken, clearToken, setAccountProfile, getTeamKey } from "../lib/tiktokToken";
-import { listSchedule, addSchedule, type ScheduledPost } from "../lib/schedule";
-import { laDefaultDateTime, laToUTC } from "../lib/latime";
+import { fetchAutoPosts, type AutoPost } from "../lib/schedule";
+import { laDefaultDateTime, laToUTC, utcToLA } from "../lib/latime";
 import { chunkRanges } from "../lib/chunk";
 
 const 公開設定ラベル: Record<string, string> = {
@@ -53,7 +53,7 @@ export default function 投稿ページ() {
   const [投稿タイミング, set投稿タイミング] = useState<"now" | "schedule" | "draft">("now");
   const [予約日付, set予約日付] = useState("");
   const [予約時刻, set予約時刻] = useState("");
-  const [予約一覧, set予約一覧] = useState<ScheduledPost[]>([]);
+  const [予約一覧, set予約一覧] = useState<AutoPost[]>([]);
   const [タブ, setタブ] = useState<"post" | "calendar">("post");
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -72,7 +72,8 @@ export default function 投稿ページ() {
         return;
       }
       setアカウントID(token.open_id);
-      set予約一覧(listSchedule());
+      // サーバーに登録済みの予約（自動投稿されるもの）を読み込む
+      fetchAutoPosts().then((r) => { if (r.ok) set予約一覧(r.posts); });
       const def = laDefaultDateTime();
       set予約日付(def.date);
       set予約時刻(def.time);
@@ -184,7 +185,7 @@ export default function 投稿ページ() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "予約の登録に失敗しました");
 
-        set予約一覧(listSchedule());
+        fetchAutoPosts().then((r) => { if (r.ok) set予約一覧(r.posts); });
         setステップ("完了");
       } catch (e) {
         setエラー(e instanceof Error ? e.message : String(e));
@@ -302,12 +303,12 @@ export default function 投稿ページ() {
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  // 下部ミニリスト用：LA時刻基準で「これから」の予約を直近5件
-  const laNow = laDefaultDateTime();
+  // 下部ミニリスト用：これから自動投稿される予約を直近5件（表示はLA時間）
   const 今後の予約 = 予約一覧
-    .filter((s) => s.status !== "投稿済み" && `${s.date} ${s.time}` >= `${laNow.date} ${laNow.time}`)
-    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
-    .slice(0, 5);
+    .filter((s) => s.status === "予約")
+    .sort((a, b) => a.run_at.localeCompare(b.run_at))
+    .slice(0, 5)
+    .map((s) => ({ ...s, ...utcToLA(s.run_at) }));
   const 予約日表示 = (d: string) => {
     const [y, m, day] = d.split("-").map(Number);
     const wd = ["日", "月", "火", "水", "木", "金", "土"][new Date(y, m - 1, day).getDay()];
@@ -335,7 +336,7 @@ export default function 投稿ページ() {
         </div>
       </div>
 
-      {タブ === "calendar" && <ScheduleCalendar />}
+      {タブ === "calendar" && <ScheduleCalendar onNewPost={() => setタブ("post")} />}
 
       {タブ === "post" && (
       <div className="flex-1 max-w-xl mx-auto w-full px-6 py-6">
