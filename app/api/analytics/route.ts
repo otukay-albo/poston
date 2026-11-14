@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-// DBへのアクセスはサーバー専用キーで行う（テーブルはRLSで保護し、公開キーでは読み書きできない）
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { latestStats } from "@/lib/latestStats";
 
 export async function GET(req: NextRequest) {
   const account = req.nextUrl.searchParams.get("account");
@@ -9,17 +8,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "account is required" }, { status: 400 });
   }
 
-  const { data, error } = await supabaseAdmin
-    .from("video_stats")
-    .select("*")
-    .eq("account_name", account)
-    .order("fetched_at", { ascending: true });
-
+  // 動画ごとの最新スナップショットだけを返す（画面側もこの単位でしか使わない）
+  const { rows: data, error } = await latestStats(account);
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error }, { status: 500 });
   }
 
-  const rows = (data || []).map((r) => ({
+  const rows = data.map((r) => ({
     取得日時: r.fetched_at,
     動画ID: r.video_id,
     タイトル: r.title,

@@ -11,7 +11,7 @@ export default function PrivacyPage() {
 
       <div className="max-w-3xl mx-auto px-8 py-16 flex-1">
         <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-gray-500 text-sm mb-10">Last updated: July 12, 2026</p>
+        <p className="text-gray-500 text-sm mb-10">Last updated: November 14, 2026</p>
 
         <div className="space-y-8 text-gray-300 leading-relaxed">
           <section>
@@ -72,16 +72,27 @@ export default function PrivacyPage() {
               <li>
                 <strong className="text-white">Access and refresh tokens</strong> are stored locally in your web
                 browser (localStorage) on your own device, to keep you signed in and to refresh access
-                automatically. They are not stored on our servers.
+                automatically. If your team turns on team sync, they are also stored in our database (Supabase),
+                which is not readable with public credentials, so that authorized members of the same team can
+                use the connected account from their own devices and so that scheduled posts can be published
+                at the scheduled time.
               </li>
               <li>
                 <strong className="text-white">Video statistics</strong> used for analytics are stored in our
                 database (Supabase) so that performance trends can be tracked over time.
               </li>
               <li>
-                <strong className="text-white">Uploaded videos</strong> are transmitted directly from your
-                browser to TikTok&rsquo;s servers to complete the post; we do not permanently store your video
-                files.
+                <strong className="text-white">Uploaded videos.</strong> When you post immediately or send a
+                video to drafts, the file is transmitted directly from your browser to TikTok&rsquo;s servers
+                and is not stored by us. When you schedule a post, the video file is held temporarily in our
+                private cloud storage (Supabase) until the scheduled time, and is deleted once the post has
+                been published, when you cancel the schedule, or when posting has finally failed. We do not
+                keep video files permanently.
+              </li>
+              <li>
+                <strong className="text-white">Scheduled post details</strong> (the caption, the scheduled
+                time, and the privacy, interaction and commercial-content settings you chose) are stored in
+                our database so the post can be published for you, and remain until you delete the entry.
               </li>
             </ul>
             <p className="mt-3">
@@ -124,7 +135,7 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 space-y-2">
               <li>
                 You can disconnect a TikTok account from Poston at any time by logging out, which removes the
-                stored tokens from your browser.
+                stored tokens from your browser and, if team sync is on, from our database.
               </li>
               <li>
                 You can also revoke Poston&rsquo;s access in your TikTok account settings

@@ -89,8 +89,8 @@ interface Due {
 }
 
 // 失敗を記録する。試行回数は着手時（claim）に加算済みなので、ここでは増やさない。
-async function fail(id: string, attempts: number, message: string) {
-  const over = attempts >= MAX_ATTEMPTS;
+async function fail(post: Due, message: string) {
+  const over = post.attempts >= MAX_ATTEMPTS;
   await supabaseAdmin
     .from("scheduled_posts")
     .update({
@@ -98,7 +98,11 @@ async function fail(id: string, attempts: number, message: string) {
       // 上限まで試したら諦める。それまでは次回の実行で再試行する
       status: over ? "失敗" : "予約",
     })
-    .eq("id", id);
+    .eq("id", post.id);
+  // もう投稿しないことが確定したら、預かっていた動画は消す（不要なデータを持ち続けない）
+  if (over && post.video_path) {
+    await supabaseAdmin.storage.from(BUCKET).remove([post.video_path]);
+  }
   return { ok: false, error: message, gaveUp: over };
 }
 
@@ -130,6 +134,9 @@ async function claimNext(): Promise<Due | null> {
           error: `時間内に投稿を完了できませんでした（動画: ${mb}）。動画を小さくするか「今すぐ投稿」をご利用ください。`,
         })
         .eq("id", post.id);
+      if (post.video_path) {
+        await supabaseAdmin.storage.from(BUCKET).remove([post.video_path]);
+      }
       continue;
     }
 
@@ -187,18 +194,18 @@ async function processOne(post: Due): Promise<Record<string, unknown>> {
 
   try {
     if (!post.video_path) {
-      return (await fail(post.id, post.attempts, "動画が保存されていません"));
+      return (await fail(post, "動画が保存されていません"));
     }
 
     const token = await ensureToken(post.open_id);
     if (!token) {
-      return await fail(post.id, post.attempts, "アカウントのログイン情報が無効です。再ログインしてください");
+      return await fail(post, "アカウントのログイン情報が無効です。再ログインしてください");
     }
 
     // 1) 保管してある動画を取り出す
     const dl = await supabaseAdmin.storage.from(BUCKET).download(post.video_path);
     if (dl.error || !dl.data) {
-      return await fail(post.id, post.attempts, `動画を読み込めませんでした: ${dl.error?.message ?? "不明"}`);
+      return await fail(post, `動画を読み込めませんでした: ${dl.error?.message ?? "不明"}`);
     }
     const blob = dl.data;
     const size = blob.size;
@@ -231,7 +238,7 @@ async function processOne(post: Due): Promise<Record<string, unknown>> {
     });
     const initData = await initRes.json();
     if (initData.error && initData.error.code !== "ok") {
-      return await fail(post.id, post.attempts, `TikTokが投稿を受け付けませんでした: ${initData.error.message}`);
+      return await fail(post, `TikTokが投稿を受け付けませんでした: ${initData.error.message}`);
     }
 
     // 3) 動画をTikTokへ送る（分割ルールに従って順番に）
@@ -250,7 +257,7 @@ async function processOne(post: Due): Promise<Record<string, unknown>> {
         body: buf.slice(start, end + 1),
       });
       if (!put.ok) {
-        return await fail(post.id, post.attempts, `動画の送信に失敗しました (${put.status})`);
+        return await fail(post, `動画の送信に失敗しました (${put.status})`);
       }
     }
 
@@ -272,7 +279,7 @@ async function processOne(post: Due): Promise<Record<string, unknown>> {
       post.video_size && post.video_size > SIZE_WARN_BYTES
         ? `${msg}（動画が大きい可能性があります: ${(post.video_size / 1048576).toFixed(0)}MB）`
         : msg;
-    return (await fail(post.id, post.attempts, hint));
+    return (await fail(post, hint));
   }
 }
 

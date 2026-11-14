@@ -198,6 +198,7 @@ export default function Home() {
                 <li>・フォロワー数・いいね数・動画本数</li>
                 <li>・投稿済み動画の再生数・いいね・コメント・シェア数</li>
                 <li>・動画の長さと投稿日時</li>
+                <li>・予約投稿の動画とキャプション（予約時刻まで一時的に保存し、投稿後に削除します）</li>
               </ul>
             </div>
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-7">
@@ -248,7 +249,8 @@ export default function Home() {
               Sign-in uses TikTok Login only — Poston never creates or receives a password. With the
               user&apos;s permission we read the account name and avatar, follower and video counts,
               and the view / like / comment / share counts of their own posts, and we use the Content
-              Posting API to publish a video or upload it as a draft. Metrics that TikTok does not
+              Posting API to publish a video or upload it as a draft. For a scheduled post, the video is
+              held temporarily until the scheduled time and deleted after it is published. Metrics that TikTok does not
               expose to third-party tools — saves, average watch time and audience demographics —
               are not available in Poston, and we say so plainly rather than estimating them.
             </p>
